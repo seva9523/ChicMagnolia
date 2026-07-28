@@ -34,6 +34,7 @@ export async function fetchOxylabsHtml(
       source: 'universal',
       url: url.toString(),
       geo_location: 'United Kingdom',
+      locale: 'en-GB',
       render: 'html',
     }),
     cache: 'no-store',
