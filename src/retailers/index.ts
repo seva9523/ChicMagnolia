@@ -7,12 +7,14 @@ export type {
 } from './types';
 
 export { mangoAdapter } from './mango';
+export { nextAdapter } from './next';
 export { zaraAdapter } from './zara';
 
 import { mangoAdapter } from './mango';
+import { nextAdapter } from './next';
 import { zaraAdapter } from './zara';
 
-export const retailerAdapters = [mangoAdapter, zaraAdapter] as const;
+export const retailerAdapters = [nextAdapter, mangoAdapter, zaraAdapter] as const;
 
 export function findRetailerAdapter(url: URL) {
   return retailerAdapters.find((adapter) => adapter.supports(url)) ?? null;
