@@ -118,6 +118,8 @@ export async function checkCurrentPrice(formData: FormData) {
   if (purchaseError || !purchase) redirect('/dashboard?message=Purchase could not be found.');
   if (purchase.status !== 'tracking') redirect('/dashboard?message=Only active purchases can be checked.');
 
+  let redirectMessage = 'Current price checked successfully.';
+
   try {
     const url = new URL(purchase.product_url);
     const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
@@ -150,11 +152,9 @@ export async function checkCurrentPrice(formData: FormData) {
       .eq('id', purchase.id)
       .eq('user_id', user.id);
     if (updateError) throw new Error(updateError.message);
-
-    revalidatePath('/dashboard');
-    redirect('/dashboard?message=Current price checked successfully.');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Price check failed.';
+    redirectMessage = `Price check failed: ${message}`;
 
     await supabase.from('price_checks').insert({
       purchase_id: purchase.id,
@@ -170,8 +170,8 @@ export async function checkCurrentPrice(formData: FormData) {
       .update({ last_checked_at: new Date().toISOString(), last_check_error: message })
       .eq('id', purchase.id)
       .eq('user_id', user.id);
-
-    revalidatePath('/dashboard');
-    redirect(`/dashboard?message=${encodeURIComponent(`Price check failed: ${message}`)}`);
   }
+
+  revalidatePath('/dashboard');
+  redirect(`/dashboard?message=${encodeURIComponent(redirectMessage)}`);
 }
