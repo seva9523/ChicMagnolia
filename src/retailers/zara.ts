@@ -37,6 +37,35 @@ function findProductNode(nodes: unknown[]): Record<string, unknown> | null {
   return null;
 }
 
+function decodeHtml(value: string) {
+  return value
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>');
+}
+
+function metaContent(html: string, key: string): string | null {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patterns = [
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+      'i',
+    ),
+    new RegExp(
+      `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["'][^>]*>`,
+      'i',
+    ),
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return decodeHtml(match[1].trim());
+  }
+  return null;
+}
+
 function priceToMinorUnits(value: unknown): number {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 0) {
@@ -45,37 +74,77 @@ function priceToMinorUnits(value: unknown): number {
   return Math.round(amount * 100);
 }
 
+function productIdFromUrl(url: URL): string | null {
+  return url.pathname.match(/-p(\d+)\.html/i)?.[1] ?? null;
+}
+
+function parseMetaProduct(
+  html: string,
+  url: URL,
+  variant: ProductVariant,
+): RetailerProductSnapshot | null {
+  const price =
+    metaContent(html, 'product:price:amount') ??
+    metaContent(html, 'og:price:amount');
+  if (!price) return null;
+
+  const availability =
+    metaContent(html, 'product:availability') ??
+    metaContent(html, 'og:availability') ??
+    '';
+
+  return {
+    canonicalUrl: metaContent(html, 'og:url') ?? url.toString(),
+    retailerProductId: productIdFromUrl(url),
+    title: metaContent(html, 'og:title') ?? 'Zara product',
+    price: {
+      amountMinor: priceToMinorUnits(price),
+      currency:
+        metaContent(html, 'product:price:currency') ??
+        metaContent(html, 'og:price:currency') ??
+        'GBP',
+    },
+    variant,
+    inStock: !availability.toLowerCase().includes('out'),
+    checkedAt: new Date(),
+  };
+}
+
 export function parseZaraProductHtml(
   html: string,
   url: URL,
   variant: ProductVariant,
 ): RetailerProductSnapshot {
   const product = findProductNode(extractJsonLd(html));
-  if (!product) throw new Error('Zara product metadata was not found.');
 
-  const offersValue = product.offers;
-  const offer = Array.isArray(offersValue) ? offersValue[0] : offersValue;
-  if (!offer || typeof offer !== 'object') {
-    throw new Error('Zara product offer metadata was not found.');
+  if (product) {
+    const offersValue = product.offers;
+    const offer = Array.isArray(offersValue) ? offersValue[0] : offersValue;
+    if (offer && typeof offer === 'object') {
+      const offerRecord = offer as Record<string, unknown>;
+      const availability = String(offerRecord.availability ?? '');
+      const canonicalUrl = String(product.url ?? url.toString());
+      const productId = product.sku ?? product.productID ?? productIdFromUrl(url);
+
+      return {
+        canonicalUrl,
+        retailerProductId: productId ? String(productId) : null,
+        title: String(product.name ?? 'Zara product'),
+        price: {
+          amountMinor: priceToMinorUnits(offerRecord.price),
+          currency: String(offerRecord.priceCurrency ?? 'GBP'),
+        },
+        variant,
+        inStock: !availability.toLowerCase().includes('outofstock'),
+        checkedAt: new Date(),
+      };
+    }
   }
 
-  const offerRecord = offer as Record<string, unknown>;
-  const availability = String(offerRecord.availability ?? '');
-  const canonicalUrl = String(product.url ?? url.toString());
-  const productId = product.sku ?? product.productID ?? null;
+  const metaProduct = parseMetaProduct(html, url, variant);
+  if (metaProduct) return metaProduct;
 
-  return {
-    canonicalUrl,
-    retailerProductId: productId ? String(productId) : null,
-    title: String(product.name ?? 'Zara product'),
-    price: {
-      amountMinor: priceToMinorUnits(offerRecord.price),
-      currency: String(offerRecord.priceCurrency ?? 'GBP'),
-    },
-    variant,
-    inStock: !availability.toLowerCase().includes('outofstock'),
-    checkedAt: new Date(),
-  };
+  throw new Error('Zara product metadata was not found.');
 }
 
 async function fetchDirectHtml(url: URL): Promise<string> {
@@ -90,10 +159,7 @@ async function fetchDirectHtml(url: URL): Promise<string> {
     signal: AbortSignal.timeout(15_000),
   });
 
-  if (!response.ok) {
-    throw new Error(`Zara returned HTTP ${response.status}.`);
-  }
-
+  if (!response.ok) throw new Error(`Zara returned HTTP ${response.status}.`);
   return response.text();
 }
 
@@ -101,9 +167,7 @@ export async function fetchBrowserlessHtml(
   url: URL,
   token = process.env.BROWSERLESS_TOKEN,
 ): Promise<string> {
-  if (!token) {
-    throw new Error('Browserless is not configured.');
-  }
+  if (!token) throw new Error('Browserless is not configured.');
 
   const endpoint = new URL(BROWSERLESS_ENDPOINT);
   endpoint.searchParams.set('token', token);
@@ -130,7 +194,6 @@ export async function fetchBrowserlessHtml(
   if (typeof payload.content !== 'string' || payload.content.length === 0) {
     throw new Error('Browserless returned no page content.');
   }
-
   return payload.content;
 }
 
@@ -148,12 +211,10 @@ export const zaraAdapter: RetailerAdapter = {
     if (!this.supports(url)) throw new Error('Unsupported Zara URL.');
 
     try {
-      const html = await fetchDirectHtml(url);
-      return parseZaraProductHtml(html, url, variant);
+      return parseZaraProductHtml(await fetchDirectHtml(url), url, variant);
     } catch (directError) {
       try {
-        const html = await fetchBrowserlessHtml(url);
-        return parseZaraProductHtml(html, url, variant);
+        return parseZaraProductHtml(await fetchBrowserlessHtml(url), url, variant);
       } catch (browserlessError) {
         const directMessage =
           directError instanceof Error ? directError.message : 'Direct Zara request failed.';
