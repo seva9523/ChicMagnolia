@@ -10,11 +10,47 @@ export { mangoAdapter } from './mango';
 export { nextAdapter } from './next';
 export { zaraAdapter } from './zara';
 
-import { mangoAdapter } from './mango';
-import { nextAdapter } from './next';
-import { zaraAdapter } from './zara';
+import { mangoAdapter, parseMangoProductHtml } from './mango';
+import { nextAdapter, parseNextProductHtml } from './next';
+import { fetchOxylabsHtml } from './oxylabs';
+import type { ProductVariant, RetailerAdapter, RetailerProductSnapshot } from './types';
+import { parseZaraProductHtml, zaraAdapter } from './zara';
 
-export const retailerAdapters = [nextAdapter, mangoAdapter, zaraAdapter] as const;
+type ProductParser = (
+  html: string,
+  url: URL,
+  variant: ProductVariant,
+) => RetailerProductSnapshot;
+
+function withOxylabsFallback(
+  adapter: RetailerAdapter,
+  parseProductHtml: ProductParser,
+): RetailerAdapter {
+  return {
+    ...adapter,
+    async fetchProduct(url, variant) {
+      try {
+        return await adapter.fetchProduct(url, variant);
+      } catch (primaryError) {
+        try {
+          return parseProductHtml(await fetchOxylabsHtml(url), url, variant);
+        } catch (oxylabsError) {
+          const primaryMessage =
+            primaryError instanceof Error ? primaryError.message : 'Primary retailer request failed.';
+          const oxylabsMessage =
+            oxylabsError instanceof Error ? oxylabsError.message : 'Oxylabs fallback failed.';
+          throw new Error(`${primaryMessage} Oxylabs fallback: ${oxylabsMessage}`);
+        }
+      }
+    },
+  };
+}
+
+export const retailerAdapters = [
+  withOxylabsFallback(nextAdapter, parseNextProductHtml),
+  withOxylabsFallback(mangoAdapter, parseMangoProductHtml),
+  withOxylabsFallback(zaraAdapter, parseZaraProductHtml),
+] as const;
 
 export function findRetailerAdapter(url: URL) {
   return retailerAdapters.find((adapter) => adapter.supports(url)) ?? null;
