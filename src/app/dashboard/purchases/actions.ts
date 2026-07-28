@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { retailerAdapters } from '@/retailers';
 
 const purchaseSchema = z
   .object({
@@ -63,9 +64,7 @@ export async function createPurchase(formData: FormData) {
     colour: result.data.colour ?? null,
   });
 
-  if (error) {
-    redirect(`/dashboard/purchases/new?error=${encodeURIComponent(error.message)}`);
-  }
+  if (error) redirect(`/dashboard/purchases/new?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath('/dashboard');
   redirect('/dashboard?message=Purchase added successfully.');
@@ -75,10 +74,7 @@ export async function updatePurchaseStatus(formData: FormData) {
   const purchaseId = field(formData, 'purchaseId');
   const status = field(formData, 'status');
 
-  if (!z.string().uuid().safeParse(purchaseId).success) {
-    redirect('/dashboard?message=Invalid purchase.');
-  }
-
+  if (!z.string().uuid().safeParse(purchaseId).success) redirect('/dashboard?message=Invalid purchase.');
   if (!['tracking', 'returned', 'stopped'].includes(status)) {
     redirect('/dashboard?message=Invalid purchase status.');
   }
@@ -100,4 +96,82 @@ export async function updatePurchaseStatus(formData: FormData) {
 
   revalidatePath('/dashboard');
   redirect('/dashboard?message=Purchase updated.');
+}
+
+export async function checkCurrentPrice(formData: FormData) {
+  const purchaseId = field(formData, 'purchaseId');
+  if (!z.string().uuid().safeParse(purchaseId).success) redirect('/dashboard?message=Invalid purchase.');
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: purchase, error: purchaseError } = await supabase
+    .from('tracked_purchases')
+    .select('id, product_url, size, colour, status')
+    .eq('id', purchaseId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (purchaseError || !purchase) redirect('/dashboard?message=Purchase could not be found.');
+  if (purchase.status !== 'tracking') redirect('/dashboard?message=Only active purchases can be checked.');
+
+  try {
+    const url = new URL(purchase.product_url);
+    const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
+    if (!adapter) throw new Error('This retailer is not supported yet.');
+
+    const snapshot = await adapter.fetchProduct(url, {
+      size: purchase.size,
+      colour: purchase.colour,
+    });
+
+    const { error: checkError } = await supabase.from('price_checks').insert({
+      purchase_id: purchase.id,
+      user_id: user.id,
+      price_pence: snapshot.price.amountMinor,
+      currency: snapshot.price.currency,
+      in_stock: snapshot.inStock,
+      checked_at: snapshot.checkedAt.toISOString(),
+      error_message: null,
+    });
+    if (checkError) throw new Error(checkError.message);
+
+    const { error: updateError } = await supabase
+      .from('tracked_purchases')
+      .update({
+        current_price_pence: snapshot.price.amountMinor,
+        current_in_stock: snapshot.inStock,
+        last_checked_at: snapshot.checkedAt.toISOString(),
+        last_check_error: null,
+      })
+      .eq('id', purchase.id)
+      .eq('user_id', user.id);
+    if (updateError) throw new Error(updateError.message);
+
+    revalidatePath('/dashboard');
+    redirect('/dashboard?message=Current price checked successfully.');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Price check failed.';
+
+    await supabase.from('price_checks').insert({
+      purchase_id: purchase.id,
+      user_id: user.id,
+      price_pence: null,
+      currency: 'GBP',
+      in_stock: null,
+      error_message: message,
+    });
+
+    await supabase
+      .from('tracked_purchases')
+      .update({ last_checked_at: new Date().toISOString(), last_check_error: message })
+      .eq('id', purchase.id)
+      .eq('user_id', user.id);
+
+    revalidatePath('/dashboard');
+    redirect(`/dashboard?message=${encodeURIComponent(`Price check failed: ${message}`)}`);
+  }
 }
