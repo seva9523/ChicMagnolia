@@ -7,7 +7,8 @@ import type {
 
 const ZARA_RETURN_POLICY_URL =
   'https://www.zara.com/uk/en/help-center/HowToReturn';
-const BROWSERLESS_ENDPOINT = 'https://production-lon.browserless.io/unblock';
+const BROWSERLESS_FUNCTION_ENDPOINT =
+  'https://production-lon.browserless.io/function';
 
 function extractJsonLd(html: string): unknown[] {
   return [
@@ -67,7 +68,8 @@ function metaContent(html: string, key: string): string | null {
 }
 
 function priceToMinorUnits(value: unknown): number {
-  const amount = Number(value);
+  const normalized = String(value).replace(/[^0-9.,]/g, '').replace(',', '.');
+  const amount = Number(normalized);
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error('Zara product price could not be parsed.');
   }
@@ -163,38 +165,111 @@ async function fetchDirectHtml(url: URL): Promise<string> {
   return response.text();
 }
 
-export async function fetchBrowserlessHtml(
+type BrowserlessProduct = {
+  title?: unknown;
+  canonicalUrl?: unknown;
+  price?: unknown;
+  currency?: unknown;
+  inStock?: unknown;
+};
+
+export async function fetchBrowserlessProduct(
   url: URL,
+  variant: ProductVariant,
   token = process.env.BROWSERLESS_TOKEN,
-): Promise<string> {
+): Promise<RetailerProductSnapshot> {
   if (!token) throw new Error('Browserless is not configured.');
 
-  const endpoint = new URL(BROWSERLESS_ENDPOINT);
+  const endpoint = new URL(BROWSERLESS_FUNCTION_ENDPOINT);
   endpoint.searchParams.set('token', token);
+
+  const code = `
+    export default async ({ page, context }) => {
+      await page.setExtraHTTPHeaders({ 'accept-language': 'en-GB,en;q=0.9' });
+      await page.goto(context.url, { waitUntil: 'networkidle2', timeout: 40000 });
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      const data = await page.evaluate(() => {
+        const meta = (key) =>
+          document.querySelector('meta[property="' + key + '"],meta[name="' + key + '"]')?.getAttribute('content')?.trim() || null;
+        const clean = (value) => value?.replace(/\\s+/g, ' ').trim() || null;
+        const title =
+          clean(document.querySelector('h1')?.textContent) ||
+          meta('og:title') ||
+          clean(document.title.replace(/\\s*\\|\\s*ZARA.*$/i, ''));
+
+        const preferredSelectors = [
+          '[data-qa-qualifier="price-amount-current"]',
+          '[data-qa-action="product-price"]',
+          '.money-amount__main',
+          '[class*="price"]',
+        ];
+        const candidates = [];
+        for (const selector of preferredSelectors) {
+          for (const element of document.querySelectorAll(selector)) {
+            const text = clean(element.textContent);
+            if (text && /£\\s*\\d/.test(text) && text.length < 80) candidates.push(text);
+          }
+        }
+        if (candidates.length === 0) {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const text = clean(walker.currentNode.textContent);
+            if (text && /^£\\s*\\d[\\d,.]*$/.test(text)) candidates.push(text);
+          }
+        }
+
+        const metaPrice = meta('product:price:amount') || meta('og:price:amount');
+        const price = metaPrice || candidates[0] || null;
+        const bodyText = clean(document.body?.innerText)?.toLowerCase() || '';
+        const availability = meta('product:availability') || meta('og:availability') || '';
+        const inStock = !availability.toLowerCase().includes('out') &&
+          !bodyText.includes('out of stock') &&
+          !bodyText.includes('coming soon');
+
+        return {
+          title,
+          canonicalUrl: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || meta('og:url') || location.href,
+          price,
+          currency: meta('product:price:currency') || meta('og:price:currency') || 'GBP',
+          inStock,
+        };
+      });
+
+      return { data, type: 'application/json' };
+    };
+  `;
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      url: url.toString(),
-      content: true,
-      cookies: false,
-      screenshot: false,
-      browserWSEndpoint: false,
-    }),
+    body: JSON.stringify({ code, context: { url: url.toString() } }),
     cache: 'no-store',
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(55_000),
   });
 
   if (!response.ok) {
     throw new Error(`Browserless returned HTTP ${response.status}.`);
   }
 
-  const payload = (await response.json()) as { content?: unknown };
-  if (typeof payload.content !== 'string' || payload.content.length === 0) {
-    throw new Error('Browserless returned no page content.');
+  const payload = (await response.json()) as BrowserlessProduct;
+  if (!payload.price) {
+    throw new Error('Browserless could not find the Zara product price.');
   }
-  return payload.content;
+
+  return {
+    canonicalUrl:
+      typeof payload.canonicalUrl === 'string' ? payload.canonicalUrl : url.toString(),
+    retailerProductId: productIdFromUrl(url),
+    title: typeof payload.title === 'string' ? payload.title : 'Zara product',
+    price: {
+      amountMinor: priceToMinorUnits(payload.price),
+      currency: typeof payload.currency === 'string' ? payload.currency : 'GBP',
+    },
+    variant,
+    inStock: payload.inStock !== false,
+    checkedAt: new Date(),
+  };
 }
 
 export const zaraAdapter: RetailerAdapter = {
@@ -214,7 +289,7 @@ export const zaraAdapter: RetailerAdapter = {
       return parseZaraProductHtml(await fetchDirectHtml(url), url, variant);
     } catch (directError) {
       try {
-        return parseZaraProductHtml(await fetchBrowserlessHtml(url), url, variant);
+        return await fetchBrowserlessProduct(url, variant);
       } catch (browserlessError) {
         const directMessage =
           directError instanceof Error ? directError.message : 'Direct Zara request failed.';
