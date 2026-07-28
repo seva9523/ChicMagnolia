@@ -14,7 +14,8 @@ import { mangoAdapter, parseMangoProductHtml } from './mango';
 import { nextAdapter, parseNextProductHtml } from './next';
 import { fetchOxylabsHtml } from './oxylabs';
 import type { ProductVariant, RetailerAdapter, RetailerProductSnapshot } from './types';
-import { parseZaraProductHtml, zaraAdapter } from './zara';
+import { zaraAdapter } from './zara';
+import { parseZaraOxylabsHtml } from './zara-oxylabs';
 
 type ProductParser = (
   html: string,
@@ -49,7 +50,7 @@ function withOxylabsFallback(
 export const retailerAdapters = [
   withOxylabsFallback(nextAdapter, parseNextProductHtml),
   withOxylabsFallback(mangoAdapter, parseMangoProductHtml),
-  withOxylabsFallback(zaraAdapter, parseZaraProductHtml),
+  withOxylabsFallback(zaraAdapter, parseZaraOxylabsHtml),
 ] as const;
 
 export function findRetailerAdapter(url: URL) {
