@@ -183,58 +183,122 @@ export async function fetchBrowserlessProduct(
   const endpoint = new URL(BROWSERLESS_FUNCTION_ENDPOINT);
   endpoint.searchParams.set('token', token);
 
+  const productId = productIdFromUrl(url);
+  const variantId = url.searchParams.get('v1');
+
   const code = `
     export default async ({ page, context }) => {
-      await page.setExtraHTTPHeaders({ 'accept-language': 'en-GB,en;q=0.9' });
-      await page.goto(context.url, { waitUntil: 'networkidle2', timeout: 40000 });
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const productId = context.productId;
+      const variantId = context.variantId;
+      const captured = [];
 
-      const data = await page.evaluate(() => {
+      const walk = (value, path = '', depth = 0) => {
+        if (depth > 10 || value == null) return [];
+        const results = [];
+        if (Array.isArray(value)) {
+          for (let index = 0; index < value.length; index += 1) {
+            results.push(...walk(value[index], path + '[' + index + ']', depth + 1));
+          }
+          return results;
+        }
+        if (typeof value !== 'object') return results;
+
+        const entries = Object.entries(value);
+        const text = JSON.stringify(value).slice(0, 120000);
+        const matchesProduct =
+          (productId && text.includes(productId)) ||
+          (variantId && text.includes(variantId));
+
+        if (matchesProduct) {
+          const priceKeys = [
+            'price',
+            'currentPrice',
+            'salePrice',
+            'amount',
+            'value',
+            'priceValue',
+          ];
+          for (const key of priceKeys) {
+            const candidate = value[key];
+            if (typeof candidate === 'number' || typeof candidate === 'string') {
+              const numeric = Number(String(candidate).replace(/[^0-9.]/g, ''));
+              if (Number.isFinite(numeric) && numeric > 0) {
+                results.push({
+                  price: numeric,
+                  currency: value.currency || value.currencyCode || 'GBP',
+                  title: value.name || value.title || null,
+                  inStock:
+                    value.availability !== 'OUT_OF_STOCK' &&
+                    value.availability !== 'out_of_stock' &&
+                    value.inStock !== false,
+                  path: path + '.' + key,
+                });
+              }
+            }
+          }
+        }
+
+        for (const [key, child] of entries) {
+          results.push(...walk(child, path ? path + '.' + key : key, depth + 1));
+        }
+        return results;
+      };
+
+      page.on('response', async (response) => {
+        try {
+          const contentType = response.headers()['content-type'] || '';
+          if (!contentType.includes('json')) return;
+          const responseUrl = response.url();
+          if (!responseUrl.includes('zara.com')) return;
+          const json = await response.json();
+          captured.push(...walk(json));
+        } catch {}
+      });
+
+      await page.setExtraHTTPHeaders({ 'accept-language': 'en-GB,en;q=0.9' });
+      await page.goto(context.url, { waitUntil: 'domcontentloaded', timeout: 40000 });
+      await new Promise((resolve) => setTimeout(resolve, 7000));
+
+      const dom = await page.evaluate(() => {
+        const clean = (value) => value?.replace(/\\s+/g, ' ').trim() || null;
         const meta = (key) =>
           document.querySelector('meta[property="' + key + '"],meta[name="' + key + '"]')?.getAttribute('content')?.trim() || null;
-        const clean = (value) => value?.replace(/\\s+/g, ' ').trim() || null;
-        const title =
-          clean(document.querySelector('h1')?.textContent) ||
-          meta('og:title') ||
-          clean(document.title.replace(/\\s*\\|\\s*ZARA.*$/i, ''));
-
-        const preferredSelectors = [
-          '[data-qa-qualifier="price-amount-current"]',
-          '[data-qa-action="product-price"]',
-          '.money-amount__main',
-          '[class*="price"]',
-        ];
-        const candidates = [];
-        for (const selector of preferredSelectors) {
-          for (const element of document.querySelectorAll(selector)) {
-            const text = clean(element.textContent);
-            if (text && /£\\s*\\d/.test(text) && text.length < 80) candidates.push(text);
-          }
-        }
-        if (candidates.length === 0) {
-          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-          while (walker.nextNode()) {
-            const text = clean(walker.currentNode.textContent);
-            if (text && /^£\\s*\\d[\\d,.]*$/.test(text)) candidates.push(text);
-          }
-        }
-
-        const metaPrice = meta('product:price:amount') || meta('og:price:amount');
-        const price = metaPrice || candidates[0] || null;
-        const bodyText = clean(document.body?.innerText)?.toLowerCase() || '';
-        const availability = meta('product:availability') || meta('og:availability') || '';
-        const inStock = !availability.toLowerCase().includes('out') &&
-          !bodyText.includes('out of stock') &&
-          !bodyText.includes('coming soon');
-
+        const body = clean(document.body?.innerText) || '';
+        const priceMatch = body.match(/£\\s*([0-9]+(?:[.,][0-9]{2})?)/);
         return {
-          title,
-          canonicalUrl: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || meta('og:url') || location.href,
-          price,
+          title: clean(document.querySelector('h1')?.textContent) || meta('og:title'),
+          canonicalUrl:
+            document.querySelector('link[rel="canonical"]')?.getAttribute('href') ||
+            meta('og:url') ||
+            location.href,
+          price: meta('product:price:amount') || meta('og:price:amount') || priceMatch?.[1] || null,
           currency: meta('product:price:currency') || meta('og:price:currency') || 'GBP',
-          inStock,
+          inStock: !body.toLowerCase().includes('out of stock'),
         };
       });
+
+      const sensible = captured
+        .filter((item) => item.price >= 1 && item.price <= 100000)
+        .sort((a, b) => {
+          const aDecimal = Number.isInteger(a.price) ? 1 : 0;
+          const bDecimal = Number.isInteger(b.price) ? 1 : 0;
+          return aDecimal - bDecimal;
+        });
+
+      const network = sensible[0] || null;
+      const normalizedNetworkPrice = network
+        ? network.price > 1000 && Number.isInteger(network.price)
+          ? network.price / 100
+          : network.price
+        : null;
+
+      const data = {
+        title: network?.title || dom.title,
+        canonicalUrl: dom.canonicalUrl,
+        price: normalizedNetworkPrice || dom.price,
+        currency: network?.currency || dom.currency || 'GBP',
+        inStock: network ? network.inStock : dom.inStock,
+      };
 
       return { data, type: 'application/json' };
     };
@@ -243,9 +307,16 @@ export async function fetchBrowserlessProduct(
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, context: { url: url.toString() } }),
+    body: JSON.stringify({
+      code,
+      context: {
+        url: url.toString(),
+        productId,
+        variantId,
+      },
+    }),
     cache: 'no-store',
-    signal: AbortSignal.timeout(55_000),
+    signal: AbortSignal.timeout(60_000),
   });
 
   if (!response.ok) {
@@ -254,13 +325,13 @@ export async function fetchBrowserlessProduct(
 
   const payload = (await response.json()) as BrowserlessProduct;
   if (!payload.price) {
-    throw new Error('Browserless could not find the Zara product price.');
+    throw new Error('Browserless could not find Zara product data in network responses.');
   }
 
   return {
     canonicalUrl:
       typeof payload.canonicalUrl === 'string' ? payload.canonicalUrl : url.toString(),
-    retailerProductId: productIdFromUrl(url),
+    retailerProductId: productId,
     title: typeof payload.title === 'string' ? payload.title : 'Zara product',
     price: {
       amountMinor: priceToMinorUnits(payload.price),
