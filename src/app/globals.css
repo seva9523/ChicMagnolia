@@ -1,0 +1,51 @@
+@import 'tailwindcss';
+
+:root {
+  --background: oklch(0.985 0.008 95);
+  --foreground: oklch(0.2 0.025 35);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.025 35);
+  --primary: oklch(0.42 0.11 12);
+  --primary-foreground: oklch(0.98 0.01 95);
+  --secondary: oklch(0.94 0.025 75);
+  --secondary-foreground: oklch(0.28 0.04 35);
+  --muted: oklch(0.95 0.012 85);
+  --muted-foreground: oklch(0.5 0.025 35);
+  --accent: oklch(0.91 0.045 75);
+  --accent-foreground: oklch(0.28 0.04 35);
+  --destructive: oklch(0.58 0.22 27);
+  --border: oklch(0.88 0.02 75);
+  --input: oklch(0.88 0.02 75);
+  --ring: oklch(0.6 0.1 12);
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+}
