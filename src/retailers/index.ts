@@ -6,5 +6,12 @@ export type {
   RetailerReturnPolicy,
 } from './types';
 
-// Retailer implementations will be registered here from Sprint 3 onward.
-export const retailerAdapters = [] as const;
+export { zaraAdapter } from './zara';
+
+import { zaraAdapter } from './zara';
+
+export const retailerAdapters = [zaraAdapter] as const;
+
+export function findRetailerAdapter(url: URL) {
+  return retailerAdapters.find((adapter) => adapter.supports(url)) ?? null;
+}
