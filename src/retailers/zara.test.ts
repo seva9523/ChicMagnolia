@@ -32,6 +32,13 @@ describe('zaraAdapter', () => {
   it('recognises UK Zara product URLs', () => {
     expect(zaraAdapter.supports(productUrl)).toBe(true);
     expect(
+      zaraAdapter.supports(
+        new URL(
+          'https://www.zara.com/uk/en/bomber-jacket-with-dots-p08372236.html?v1=545479235&v2=2417772',
+        ),
+      ),
+    ).toBe(true);
+    expect(
       zaraAdapter.supports(new URL('https://www.zara.com/us/en/product.html')),
     ).toBe(false);
   });
