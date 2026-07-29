@@ -61,7 +61,7 @@ function sizeAliases(size: string): string[] {
 function variantContexts(html: string, variant: ProductVariant): string[] {
   const text = visiblePageText(html);
   const sizeContexts = variant.size
-    ? sizeAliases(variant.size).flatMap((alias) => tokenContexts(text, alias, 72))
+    ? sizeAliases(variant.size).flatMap((alias) => tokenContexts(text, alias, 40))
     : [];
   const colourContexts = variant.colour ? tokenContexts(text, variant.colour, 160) : [];
 
