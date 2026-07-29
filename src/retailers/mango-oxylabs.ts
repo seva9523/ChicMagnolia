@@ -62,20 +62,45 @@ function visibleProductSection(html: string): string | null {
   return html.slice(heading.index, heading.index + 8_000);
 }
 
+function labelledCurrentPrice(html: string): PriceCandidate | null {
+  const sources = [visibleProductSection(html), stripTags(html), decodeHtml(html)].filter(
+    (source): source is string => Boolean(source),
+  );
+  const patterns = [
+    /\bcurrent\s+price\b[\s\S]{0,160}?£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i,
+    /\b(?:sale|discounted)\s+price\b[\s\S]{0,160}?£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i,
+    /\bnow\b[\s\S]{0,60}?£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i,
+  ];
+
+  for (const source of sources) {
+    for (const pattern of patterns) {
+      const match = source.match(pattern);
+      const amount = match?.[1] ? numericPrice(match[1]) : null;
+      if (amount !== null) return { amount, currency: 'GBP', priority: 0 };
+    }
+  }
+
+  return null;
+}
+
 function visibleProductPrice(html: string): PriceCandidate | null {
+  const labelled = labelledCurrentPrice(html);
+  if (labelled) return labelled;
+
   const section = visibleProductSection(html);
   if (!section) return null;
 
   const text = stripTags(section);
   const matches = [...text.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)]
-    .slice(0, 2)
+    .slice(0, 3)
     .map((match) => numericPrice(match[1]))
     .filter((amount): amount is number => amount !== null);
 
   if (matches.length === 0) return null;
 
-  // Mango renders the regular and sale prices together immediately after the
-  // product heading. Ignore every later price, which can belong to recommendations.
+  // Mango can repeat the original price in accessibility text before exposing the
+  // sale price. Inspect the first three product-header prices, then ignore every
+  // later price because it may belong to recommendations or promotional content.
   return { amount: Math.min(...matches), currency: 'GBP', priority: 0 };
 }
 
