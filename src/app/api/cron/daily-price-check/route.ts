@@ -39,7 +39,7 @@ function dueDateBounds(now: Date) {
 }
 
 export async function POST(request: Request) {
-  if (!serverEnv.CRON_SECRET) {
+  if (!serverEnv.CRON_SECRET || !serverEnv.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
       { error: 'Daily monitoring is not configured.' },
       { status: 503 },
