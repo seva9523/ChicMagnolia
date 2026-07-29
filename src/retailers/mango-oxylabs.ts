@@ -43,46 +43,105 @@ function titleFromHtml(html: string): string {
   return 'Mango product';
 }
 
-function jsonPrice(html: string): { amount: string; currency: string } | null {
-  const patterns = [
-    /"(?:price|currentPrice|salePrice|finalPrice)"\s*:\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?[\s\S]{0,120}?"(?:currency|currencyCode)"\s*:\s*"(GBP|EUR|USD)"/i,
-    /"(?:currency|currencyCode)"\s*:\s*"(GBP|EUR|USD)"[\s\S]{0,120}?"(?:price|currentPrice|salePrice|finalPrice)"\s*:\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?/i,
-  ];
+type PriceCandidate = {
+  amount: number;
+  currency: string;
+  priority: number;
+};
 
-  const first = html.match(patterns[0]);
-  if (first?.[1] && first[2]) return { amount: first[1], currency: first[2].toUpperCase() };
-
-  const second = html.match(patterns[1]);
-  if (second?.[1] && second[2]) return { amount: second[2], currency: second[1].toUpperCase() };
-
-  return null;
+function numericPrice(value: string): number | null {
+  const amount = Number(value.replace(',', '.'));
+  return Number.isFinite(amount) && amount > 0 && amount < 100_000 ? amount : null;
 }
 
-function renderedPrice(html: string): { amount: string; currency: string } | null {
-  const embedded = jsonPrice(html);
-  if (embedded) return embedded;
+function jsonPriceCandidates(html: string): PriceCandidate[] {
+  const keyPriorities: Record<string, number> = {
+    salePrice: 0,
+    discountedPrice: 0,
+    discountPrice: 0,
+    finalPrice: 1,
+    currentPrice: 1,
+    offerPrice: 1,
+    price: 2,
+    originalPrice: 4,
+    listPrice: 4,
+    regularPrice: 4,
+    rrp: 4,
+  };
 
+  const candidates: PriceCandidate[] = [];
+  const keyPattern = Object.keys(keyPriorities).join('|');
+  const patterns = [
+    new RegExp(
+      `"(${keyPattern})"\\s*:\\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?[\\s\\S]{0,160}?"(?:currency|currencyCode)"\\s*:\\s*"(GBP|EUR|USD)"`,
+      'gi',
+    ),
+    new RegExp(
+      `"(?:currency|currencyCode)"\\s*:\\s*"(GBP|EUR|USD)"[\\s\\S]{0,160}?"(${keyPattern})"\\s*:\\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?`,
+      'gi',
+    ),
+  ];
+
+  for (const match of html.matchAll(patterns[0])) {
+    const amount = numericPrice(match[2]);
+    if (amount !== null) {
+      candidates.push({
+        amount,
+        currency: match[3].toUpperCase(),
+        priority: keyPriorities[match[1]] ?? 3,
+      });
+    }
+  }
+
+  for (const match of html.matchAll(patterns[1])) {
+    const amount = numericPrice(match[3]);
+    if (amount !== null) {
+      candidates.push({
+        amount,
+        currency: match[1].toUpperCase(),
+        priority: keyPriorities[match[2]] ?? 3,
+      });
+    }
+  }
+
+  return candidates;
+}
+
+function visiblePriceCandidates(html: string): PriceCandidate[] {
   const text = stripTags(html);
+  const candidates: PriceCandidate[] = [];
   const patterns: Array<{ regex: RegExp; currency: string }> = [
-    { regex: /£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i, currency: 'GBP' },
-    { regex: /\bGBP\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i, currency: 'GBP' },
-    { regex: /\b([0-9]{1,5}(?:[.,][0-9]{1,2})?)\s*GBP\b/i, currency: 'GBP' },
+    { regex: /£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi, currency: 'GBP' },
+    { regex: /\bGBP\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi, currency: 'GBP' },
+    { regex: /\b([0-9]{1,5}(?:[.,][0-9]{1,2})?)\s*GBP\b/gi, currency: 'GBP' },
   ];
 
   for (const { regex, currency } of patterns) {
-    const match = text.match(regex);
-    if (match?.[1]) return { amount: match[1], currency };
+    for (const match of text.matchAll(regex)) {
+      const amount = numericPrice(match[1]);
+      if (amount !== null) candidates.push({ amount, currency, priority: 3 });
+    }
   }
 
-  return null;
+  return candidates;
+}
+
+function currentPrice(html: string): { amount: string; currency: string } | null {
+  const candidates = [...jsonPriceCandidates(html), ...visiblePriceCandidates(html)];
+  if (candidates.length === 0) return null;
+
+  candidates.sort((left, right) => {
+    if (left.priority !== right.priority) return left.priority - right.priority;
+    return left.amount - right.amount;
+  });
+
+  const selected = candidates[0];
+  return { amount: String(selected.amount), currency: selected.currency };
 }
 
 function priceToMinorUnits(value: string): number {
-  const normalized = value.replace(',', '.');
-  const amount = Number(normalized);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error('Mango rendered price could not be parsed.');
-  }
+  const amount = numericPrice(value);
+  if (amount === null) throw new Error('Mango rendered price could not be parsed.');
   return Math.round(amount * 100);
 }
 
@@ -91,20 +150,17 @@ export function parseMangoOxylabsHtml(
   url: URL,
   variant: ProductVariant,
 ): RetailerProductSnapshot {
-  try {
-    return parseMangoProductHtml(html, url, variant);
-  } catch {
-    const price = renderedPrice(html);
-    if (!price) throw new Error('Mango product metadata was not found.');
+  const salePrice = currentPrice(html);
 
+  if (salePrice) {
     const text = stripTags(html).toLowerCase();
     return {
       canonicalUrl: url.toString(),
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: priceToMinorUnits(price.amount),
-        currency: price.currency,
+        amountMinor: priceToMinorUnits(salePrice.amount),
+        currency: salePrice.currency,
       },
       variant,
       inStock:
@@ -114,4 +170,6 @@ export function parseMangoOxylabsHtml(
       checkedAt: new Date(),
     };
   }
+
+  return parseMangoProductHtml(html, url, variant);
 }
