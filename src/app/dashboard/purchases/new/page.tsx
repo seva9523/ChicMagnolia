@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  getUserSubscription,
+  hasMonitoringAccess,
+} from '@/services/subscription-access';
 
 import { createPurchase } from '../actions';
 
@@ -32,6 +36,18 @@ export default async function NewPurchasePage({
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
+
+  let subscription;
+  try {
+    subscription = await getUserSubscription(supabase, user.id);
+  } catch {
+    redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+  }
+  if (!hasMonitoringAccess(subscription)) {
+    redirect(
+      '/dashboard/billing?message=Subscribe to ChicMagnolia before adding a monitored purchase.',
+    );
+  }
 
   const params = await searchParams;
 
