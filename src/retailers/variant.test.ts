@@ -25,7 +25,7 @@ describe('variant helpers', () => {
     expect(variantInStock(html, { size: '14', colour: null }, true)).toBe(false);
   });
 
-  it('uses a price shown in the selected variant context', () => {
+  it('uses a price shown in the selected size option', () => {
     const html = `
       <div>Black</div>
       <div>Size M £49.99 Add to bag</div>
@@ -33,6 +33,18 @@ describe('variant helpers', () => {
     `;
 
     expect(variantPriceMinor(html, { size: 'L', colour: 'Black' })).toBe(3599);
+  });
+
+  it('does not use an unrelated page price as a variant price', () => {
+    const html = `
+      <h1>Flared-sleeve satin dress</h1>
+      <p><s>£69.99</s> £35.99</p>
+      <div>Russet</div>
+      <div>12 (EUR L) NOT AVAILABLE. I WANT IT!</div>
+      <section>Complete the look <span>£9.99</span></section>
+    `;
+
+    expect(variantPriceMinor(html, { size: 'L', colour: 'Russet' })).toBeNull();
   });
 
   it('does not invent a variant price when the selected option is absent', () => {

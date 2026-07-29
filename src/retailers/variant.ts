@@ -142,12 +142,15 @@ export function variantInStock(
 }
 
 export function variantPriceMinor(html: string, variant: ProductVariant): number | null {
-  if (!variant.size && !variant.colour) return null;
+  // A variant-specific price is trustworthy only when it is printed inside the
+  // selected size option itself. Colour/page-level contexts often contain prices
+  // for recommendations or promotions and must not override the main product price.
+  if (!variant.size) return null;
 
-  const contexts = variantContexts(html, variant);
+  const contexts = sizeAliases(variant.size).flatMap((alias) => optionElementContexts(html, alias));
   const prices: number[] = [];
 
-  for (const context of contexts) {
+  for (const context of [...new Set(contexts)]) {
     for (const match of context.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)) {
       const amount = Number(match[1].replace(',', '.'));
       if (Number.isFinite(amount) && amount > 0) prices.push(Math.round(amount * 100));
