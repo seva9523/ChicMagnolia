@@ -54,8 +54,47 @@ function numericPrice(value: string): number | null {
   return Number.isFinite(amount) && amount > 0 && amount < 100_000 ? amount : null;
 }
 
-function jsonPriceCandidates(html: string): PriceCandidate[] {
-  const keyPriorities: Record<string, number> = {
+function visibleProductSection(html: string): string | null {
+  const heading = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/i);
+  if (!heading || heading.index === undefined) return null;
+
+  return html.slice(heading.index, heading.index + 8_000);
+}
+
+function visibleProductPrice(html: string): PriceCandidate | null {
+  const section = visibleProductSection(html);
+  if (!section) return null;
+
+  const text = stripTags(section);
+  const matches = [...text.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)]
+    .slice(0, 3)
+    .map((match) => numericPrice(match[1]))
+    .filter((amount): amount is number => amount !== null);
+
+  if (matches.length === 0) return null;
+
+  // Mango places the original and current prices together immediately after the
+  // product heading. Restricting extraction to this section avoids prices from
+  // recommendations and promotional content elsewhere on the page.
+  return { amount: Math.min(...matches), currency: 'GBP', priority: 0 };
+}
+
+function productJsonScopes(html: string, productId: string): string[] {
+  const scopes: string[] = [];
+  let start = 0;
+
+  while (start < html.length) {
+    const index = html.indexOf(productId, start);
+    if (index < 0) break;
+    scopes.push(html.slice(Math.max(0, index - 5_000), Math.min(html.length, index + 12_000)));
+    start = index + productId.length;
+  }
+
+  return scopes;
+}
+
+function scopedJsonPrice(html: string, productId: string): PriceCandidate | null {
+  const priorities: Record<string, number> = {
     salePrice: 0,
     discountedPrice: 0,
     discountPrice: 0,
@@ -68,81 +107,41 @@ function jsonPriceCandidates(html: string): PriceCandidate[] {
     regularPrice: 4,
     rrp: 4,
   };
-
+  const keyPattern = Object.keys(priorities).join('|');
   const candidates: PriceCandidate[] = [];
-  const keyPattern = Object.keys(keyPriorities).join('|');
-  const patterns = [
-    new RegExp(
-      `"(${keyPattern})"\\s*:\\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?[\\s\\S]{0,160}?"(?:currency|currencyCode)"\\s*:\\s*"(GBP|EUR|USD)"`,
+
+  for (const scope of productJsonScopes(html, productId)) {
+    const pattern = new RegExp(
+      `"(${keyPattern})"\\s*:\\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?`,
       'gi',
-    ),
-    new RegExp(
-      `"(?:currency|currencyCode)"\\s*:\\s*"(GBP|EUR|USD)"[\\s\\S]{0,160}?"(${keyPattern})"\\s*:\\s*"?([0-9]{1,5}(?:[.,][0-9]{1,2})?)"?`,
-      'gi',
-    ),
-  ];
+    );
 
-  for (const match of html.matchAll(patterns[0])) {
-    const amount = numericPrice(match[2]);
-    if (amount !== null) {
-      candidates.push({
-        amount,
-        currency: match[3].toUpperCase(),
-        priority: keyPriorities[match[1]] ?? 3,
-      });
+    for (const match of scope.matchAll(pattern)) {
+      const amount = numericPrice(match[2]);
+      if (amount !== null) {
+        candidates.push({
+          amount,
+          currency: 'GBP',
+          priority: priorities[match[1]] ?? 3,
+        });
+      }
     }
   }
 
-  for (const match of html.matchAll(patterns[1])) {
-    const amount = numericPrice(match[3]);
-    if (amount !== null) {
-      candidates.push({
-        amount,
-        currency: match[1].toUpperCase(),
-        priority: keyPriorities[match[2]] ?? 3,
-      });
-    }
-  }
-
-  return candidates;
-}
-
-function visiblePriceCandidates(html: string): PriceCandidate[] {
-  const text = stripTags(html);
-  const candidates: PriceCandidate[] = [];
-  const patterns: Array<{ regex: RegExp; currency: string }> = [
-    { regex: /£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi, currency: 'GBP' },
-    { regex: /\bGBP\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi, currency: 'GBP' },
-    { regex: /\b([0-9]{1,5}(?:[.,][0-9]{1,2})?)\s*GBP\b/gi, currency: 'GBP' },
-  ];
-
-  for (const { regex, currency } of patterns) {
-    for (const match of text.matchAll(regex)) {
-      const amount = numericPrice(match[1]);
-      if (amount !== null) candidates.push({ amount, currency, priority: 3 });
-    }
-  }
-
-  return candidates;
-}
-
-function currentPrice(html: string): { amount: string; currency: string } | null {
-  const candidates = [...jsonPriceCandidates(html), ...visiblePriceCandidates(html)];
   if (candidates.length === 0) return null;
-
   candidates.sort((left, right) => {
     if (left.priority !== right.priority) return left.priority - right.priority;
     return left.amount - right.amount;
   });
-
-  const selected = candidates[0];
-  return { amount: String(selected.amount), currency: selected.currency };
+  return candidates[0];
 }
 
-function priceToMinorUnits(value: string): number {
-  const amount = numericPrice(value);
-  if (amount === null) throw new Error('Mango rendered price could not be parsed.');
-  return Math.round(amount * 100);
+function currentProductPrice(html: string, url: URL): PriceCandidate | null {
+  const visible = visibleProductPrice(html);
+  if (visible) return visible;
+
+  const productId = productIdFromUrl(url);
+  return productId ? scopedJsonPrice(html, productId) : null;
 }
 
 export function parseMangoOxylabsHtml(
@@ -150,17 +149,17 @@ export function parseMangoOxylabsHtml(
   url: URL,
   variant: ProductVariant,
 ): RetailerProductSnapshot {
-  const salePrice = currentPrice(html);
+  const currentPrice = currentProductPrice(html, url);
 
-  if (salePrice) {
+  if (currentPrice) {
     const text = stripTags(html).toLowerCase();
     return {
       canonicalUrl: url.toString(),
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: priceToMinorUnits(salePrice.amount),
-        currency: salePrice.currency,
+        amountMinor: Math.round(currentPrice.amount * 100),
+        currency: currentPrice.currency,
       },
       variant,
       inStock:
