@@ -5,7 +5,10 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { retailerAdapters } from '@/retailers';
+import {
+  performPriceCheck,
+  type TrackedPurchaseForCheck,
+} from '@/services/price-monitoring';
 
 const purchaseSchema = z
   .object({
@@ -110,68 +113,20 @@ export async function checkCurrentPrice(formData: FormData) {
 
   const { data: purchase, error: purchaseError } = await supabase
     .from('tracked_purchases')
-    .select('id, product_url, size, colour, status')
+    .select(
+      'id, user_id, retailer_name, product_name, product_url, purchase_price_pence, currency, return_deadline, size, colour, status',
+    )
     .eq('id', purchaseId)
     .eq('user_id', user.id)
     .single();
 
   if (purchaseError || !purchase) redirect('/dashboard?message=Purchase could not be found.');
-  if (purchase.status !== 'tracking') redirect('/dashboard?message=Only active purchases can be checked.');
 
-  let redirectMessage = 'Current price checked successfully.';
-
-  try {
-    const url = new URL(purchase.product_url);
-    const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
-    if (!adapter) throw new Error('This retailer is not supported yet.');
-
-    const snapshot = await adapter.fetchProduct(url, {
-      size: purchase.size,
-      colour: purchase.colour,
-    });
-
-    const { error: checkError } = await supabase.from('price_checks').insert({
-      purchase_id: purchase.id,
-      user_id: user.id,
-      price_pence: snapshot.price.amountMinor,
-      currency: snapshot.price.currency,
-      in_stock: snapshot.inStock,
-      checked_at: snapshot.checkedAt.toISOString(),
-      error_message: null,
-    });
-    if (checkError) throw new Error(checkError.message);
-
-    const { error: updateError } = await supabase
-      .from('tracked_purchases')
-      .update({
-        current_price_pence: snapshot.price.amountMinor,
-        current_in_stock: snapshot.inStock,
-        last_checked_at: snapshot.checkedAt.toISOString(),
-        last_check_error: null,
-      })
-      .eq('id', purchase.id)
-      .eq('user_id', user.id);
-    if (updateError) throw new Error(updateError.message);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Price check failed.';
-    redirectMessage = `Price check failed: ${message}`;
-
-    await supabase.from('price_checks').insert({
-      purchase_id: purchase.id,
-      user_id: user.id,
-      price_pence: null,
-      currency: 'GBP',
-      in_stock: null,
-      error_message: message,
-    });
-
-    await supabase
-      .from('tracked_purchases')
-      .update({ last_checked_at: new Date().toISOString(), last_check_error: message })
-      .eq('id', purchase.id)
-      .eq('user_id', user.id);
-  }
+  const outcome = await performPriceCheck(supabase, purchase as TrackedPurchaseForCheck);
+  const message = outcome.ok
+    ? 'Current price checked successfully.'
+    : `Price check failed: ${outcome.error}`;
 
   revalidatePath('/dashboard');
-  redirect(`/dashboard?message=${encodeURIComponent(redirectMessage)}`);
+  redirect(`/dashboard?message=${encodeURIComponent(message)}`);
 }
