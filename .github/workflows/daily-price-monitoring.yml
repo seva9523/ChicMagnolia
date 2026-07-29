@@ -1,0 +1,57 @@
+name: Daily price monitoring
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      APP_URL: ${{ secrets.CHICMAGNOLIA_APP_URL }}
+      CRON_SECRET: ${{ secrets.CHICMAGNOLIA_CRON_SECRET }}
+
+    steps:
+      - name: Run due price checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_URL}" ] || [ -z "${CRON_SECRET}" ]; then
+            echo "::warning::Daily monitoring is not configured. Add CHICMAGNOLIA_APP_URL and CHICMAGNOLIA_CRON_SECRET repository secrets."
+            exit 0
+          fi
+
+          endpoint="${APP_URL%/}/api/cron/daily-price-check"
+
+          # The endpoint handles three purchases per request to stay inside Vercel's
+          # request duration. Fifty batches cover up to 150 active purchases daily,
+          # which is sufficient for the first-user beta target.
+          for batch in $(seq 1 50); do
+            echo "Running monitoring batch ${batch}..."
+            response=$(curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              --request POST \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              --header "Content-Type: application/json" \
+              "${endpoint}")
+
+            echo "${response}" | jq .
+            processed=$(echo "${response}" | jq -r '.processed // 0')
+            remaining=$(echo "${response}" | jq -r '.remaining // 0')
+
+            if [ "${processed}" -eq 0 ] || [ "${remaining}" -eq 0 ]; then
+              echo "Daily monitoring complete."
+              break
+            fi
+
+            sleep 3
+          done
