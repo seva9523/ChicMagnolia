@@ -5,6 +5,11 @@ import { signOut } from '@/app/auth/actions';
 import { checkCurrentPrice, updatePurchaseStatus } from '@/app/dashboard/purchases/actions';
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  getUserSubscription,
+  hasMonitoringAccess,
+  subscriptionStatusLabel,
+} from '@/services/subscription-access';
 
 type Purchase = {
   id: string;
@@ -49,12 +54,17 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: purchases, error } = await supabase
-    .from('tracked_purchases')
-    .select(
-      'id, retailer_name, product_name, product_url, purchase_price_pence, current_price_pence, current_in_stock, last_checked_at, last_check_error, currency, purchase_date, return_deadline, size, colour, status',
-    )
-    .order('created_at', { ascending: false });
+  const [{ data: purchases, error }, subscriptionResult] = await Promise.all([
+    supabase
+      .from('tracked_purchases')
+      .select(
+        'id, retailer_name, product_name, product_url, purchase_price_pence, current_price_pence, current_in_stock, last_checked_at, last_check_error, currency, purchase_date, return_deadline, size, colour, status',
+      )
+      .order('created_at', { ascending: false }),
+    getUserSubscription(supabase, user.id)
+      .then((subscription) => ({ subscription, error: null as string | null }))
+      .catch(() => ({ subscription: null, error: 'Billing status could not be loaded.' })),
+  ]);
 
   const params = await searchParams;
   const displayName = String(user.user_metadata.full_name ?? user.email ?? 'Shopper');
@@ -64,6 +74,9 @@ export default async function DashboardPage({
     if (purchase.status !== 'tracking' || purchase.current_price_pence === null) return total;
     return total + Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence);
   }, 0);
+  const subscription = subscriptionResult.subscription;
+  const monitoringAccess = hasMonitoringAccess(subscription);
+  const billingStatus = subscriptionStatusLabel(subscription);
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-10">
@@ -72,9 +85,16 @@ export default async function DashboardPage({
           <p className="text-primary text-sm font-semibold">ChicMagnolia</p>
           <p className="text-muted-foreground text-sm">Post-purchase savings assistant</p>
         </div>
-        <form action={signOut}>
-          <Button variant="outline" type="submit">Sign out</Button>
-        </form>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/billing">Billing</Link>
+          </Button>
+          <form action={signOut}>
+            <Button variant="outline" type="submit">
+              Sign out
+            </Button>
+          </form>
+        </div>
       </header>
 
       <section className="mx-auto max-w-6xl py-12">
@@ -86,6 +106,11 @@ export default async function DashboardPage({
             We could not load your purchases. Please try again.
           </p>
         ) : null}
+        {subscriptionResult.error ? (
+          <p className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            {subscriptionResult.error}
+          </p>
+        ) : null}
 
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
@@ -95,7 +120,30 @@ export default async function DashboardPage({
               Track purchases during their return window and check supported retailer prices.
             </p>
           </div>
-          <Button asChild><Link href="/dashboard/purchases/new">Add purchase</Link></Button>
+          {monitoringAccess ? (
+            <Button asChild>
+              <Link href="/dashboard/purchases/new">Add purchase</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href="/dashboard/billing">Subscribe for £4.99/month</Link>
+            </Button>
+          )}
+        </div>
+
+        <div className="mt-8 flex flex-col justify-between gap-4 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center">
+          <div>
+            <p className="text-muted-foreground text-sm">Subscription</p>
+            <p className="mt-1 text-lg font-semibold">{billingStatus}</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {monitoringAccess
+                ? 'Daily monitoring and manual price checks are enabled.'
+                : 'Existing data remains readable. Subscribe or resolve billing to restart monitoring.'}
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/billing">View billing</Link>
+          </Button>
         </div>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
@@ -115,18 +163,23 @@ export default async function DashboardPage({
           <div className="mt-8 rounded-3xl border bg-card p-8 text-center shadow-sm">
             <h2 className="text-xl font-semibold">No purchases tracked yet</h2>
             <p className="text-muted-foreground mx-auto mt-2 max-w-lg">
-              Add a purchase to save its price, product details, and return deadline.
+              {monitoringAccess
+                ? 'Add a purchase to save its price, product details and return deadline.'
+                : 'Subscribe first, then add up to 10 active purchases for daily monitoring.'}
             </p>
             <Button className="mt-6" asChild>
-              <Link href="/dashboard/purchases/new">Add your first purchase</Link>
+              <Link href={monitoringAccess ? '/dashboard/purchases/new' : '/dashboard/billing'}>
+                {monitoringAccess ? 'Add your first purchase' : 'View the monthly plan'}
+              </Link>
             </Button>
           </div>
         ) : (
           <div className="mt-8 grid gap-5">
             {rows.map((purchase) => {
-              const savings = purchase.current_price_pence === null
-                ? 0
-                : Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence);
+              const savings =
+                purchase.current_price_pence === null
+                  ? 0
+                  : Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence);
 
               return (
                 <article key={purchase.id} className="rounded-3xl border bg-card p-6 shadow-sm">
@@ -145,28 +198,40 @@ export default async function DashboardPage({
                       </div>
                       <h2 className="mt-2 text-xl font-semibold">{purchase.product_name}</h2>
                       <p className="text-muted-foreground mt-2 text-sm">
-                        Purchased {date.format(new Date(`${purchase.purchase_date}T00:00:00Z`))} · Return by{' '}
-                        {date.format(new Date(`${purchase.return_deadline}T00:00:00Z`))}
+                        Purchased {date.format(new Date(`${purchase.purchase_date}T00:00:00Z`))} ·
+                        Return by {date.format(new Date(`${purchase.return_deadline}T00:00:00Z`))}
                       </p>
                       {purchase.size || purchase.colour ? (
                         <p className="text-muted-foreground mt-1 text-sm">
-                          {[purchase.size ? `Size: ${purchase.size}` : null, purchase.colour ? `Colour: ${purchase.colour}` : null]
+                          {[
+                            purchase.size ? `Size: ${purchase.size}` : null,
+                            purchase.colour ? `Colour: ${purchase.colour}` : null,
+                          ]
                             .filter(Boolean)
                             .join(' · ')}
                         </p>
                       ) : null}
-                      <a className="mt-3 inline-block text-sm font-medium text-primary hover:underline" href={purchase.product_url} rel="noreferrer" target="_blank">
+                      <a
+                        className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+                        href={purchase.product_url}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
                         View retailer page
                       </a>
                     </div>
 
                     <div className="text-left sm:text-right">
                       <p className="text-muted-foreground text-xs">Purchase price</p>
-                      <p className="text-xl font-semibold">{money.format(purchase.purchase_price_pence / 100)}</p>
+                      <p className="text-xl font-semibold">
+                        {money.format(purchase.purchase_price_pence / 100)}
+                      </p>
                       {purchase.current_price_pence !== null ? (
                         <>
                           <p className="text-muted-foreground mt-3 text-xs">Current price</p>
-                          <p className="text-2xl font-semibold">{money.format(purchase.current_price_pence / 100)}</p>
+                          <p className="text-2xl font-semibold">
+                            {money.format(purchase.current_price_pence / 100)}
+                          </p>
                           {savings > 0 ? (
                             <p className="mt-1 text-sm font-semibold text-green-700">
                               Save {money.format(savings / 100)}
@@ -190,19 +255,29 @@ export default async function DashboardPage({
 
                   {purchase.status === 'tracking' ? (
                     <div className="mt-6 flex flex-wrap gap-3 border-t pt-5">
-                      <form action={checkCurrentPrice}>
-                        <input name="purchaseId" type="hidden" value={purchase.id} />
-                        <Button type="submit">Check current price</Button>
-                      </form>
+                      {monitoringAccess ? (
+                        <form action={checkCurrentPrice}>
+                          <input name="purchaseId" type="hidden" value={purchase.id} />
+                          <Button type="submit">Check current price</Button>
+                        </form>
+                      ) : (
+                        <Button asChild>
+                          <Link href="/dashboard/billing">Subscribe to resume checks</Link>
+                        </Button>
+                      )}
                       <form action={updatePurchaseStatus}>
                         <input name="purchaseId" type="hidden" value={purchase.id} />
                         <input name="status" type="hidden" value="returned" />
-                        <Button type="submit" variant="outline">Mark as returned</Button>
+                        <Button type="submit" variant="outline">
+                          Mark as returned
+                        </Button>
                       </form>
                       <form action={updatePurchaseStatus}>
                         <input name="purchaseId" type="hidden" value={purchase.id} />
                         <input name="status" type="hidden" value="stopped" />
-                        <Button type="submit" variant="outline">Stop tracking</Button>
+                        <Button type="submit" variant="outline">
+                          Stop tracking
+                        </Button>
                       </form>
                     </div>
                   ) : null}
