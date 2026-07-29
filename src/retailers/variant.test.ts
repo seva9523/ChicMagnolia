@@ -15,6 +15,16 @@ describe('variant helpers', () => {
     expect(variantInStock(html, { size: 'M', colour: 'Russet' }, false)).toBe(true);
   });
 
+  it('matches a numeric UK size without borrowing another size status', () => {
+    const html = `
+      <div>UK 12 Add to bag</div>
+      <div>UK 14 Sold out</div>
+    `;
+
+    expect(variantInStock(html, { size: '12', colour: null }, false)).toBe(true);
+    expect(variantInStock(html, { size: '14', colour: null }, true)).toBe(false);
+  });
+
   it('uses a price shown in the selected variant context', () => {
     const html = `
       <div>Black</div>
