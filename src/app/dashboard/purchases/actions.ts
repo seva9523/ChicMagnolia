@@ -40,15 +40,17 @@ async function requirePaidMonitoringAccess(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
 ) {
+  let subscription;
   try {
-    const subscription = await getUserSubscription(supabase, userId);
-    if (!hasMonitoringAccess(subscription)) {
-      redirect(
-        '/dashboard/billing?message=An active ChicMagnolia subscription is required for monitoring.',
-      );
-    }
+    subscription = await getUserSubscription(supabase, userId);
   } catch {
     redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+  }
+
+  if (!hasMonitoringAccess(subscription)) {
+    redirect(
+      '/dashboard/billing?message=An active ChicMagnolia subscription is required for monitoring.',
+    );
   }
 }
 
