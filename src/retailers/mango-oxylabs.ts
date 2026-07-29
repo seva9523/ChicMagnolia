@@ -1,6 +1,6 @@
 import type { ProductVariant, RetailerProductSnapshot } from './types';
 import { parseMangoProductHtml } from './mango';
-import { variantInStock, variantPriceMinor } from './variant';
+import { variantInStock } from './variant';
 
 function decodeHtml(value: string) {
   return value
@@ -162,7 +162,7 @@ export function parseMangoOxylabsHtml(
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
+        amountMinor: basePriceMinor,
         currency: currentPrice.currency,
       },
       variant,
@@ -174,10 +174,6 @@ export function parseMangoOxylabsHtml(
   const snapshot = parseMangoProductHtml(html, url, variant);
   return {
     ...snapshot,
-    price: {
-      ...snapshot.price,
-      amountMinor: variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
-    },
     inStock: variantInStock(html, variant, snapshot.inStock),
   };
 }
