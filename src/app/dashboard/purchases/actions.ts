@@ -9,6 +9,12 @@ import {
   performPriceCheck,
   type TrackedPurchaseForCheck,
 } from '@/services/price-monitoring';
+import {
+  getUserSubscription,
+  hasMonitoringAccess,
+} from '@/services/subscription-access';
+
+const MAX_ACTIVE_PURCHASES = 10;
 
 const purchaseSchema = z
   .object({
@@ -28,6 +34,22 @@ const purchaseSchema = z
 
 function field(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
+}
+
+async function requirePaidMonitoringAccess(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  try {
+    const subscription = await getUserSubscription(supabase, userId);
+    if (!hasMonitoringAccess(subscription)) {
+      redirect(
+        '/dashboard/billing?message=An active ChicMagnolia subscription is required for monitoring.',
+      );
+    }
+  } catch {
+    redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+  }
 }
 
 export async function createPurchase(formData: FormData) {
@@ -53,6 +75,21 @@ export async function createPurchase(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
+  await requirePaidMonitoringAccess(supabase, user.id);
+
+  const { count, error: countError } = await supabase
+    .from('tracked_purchases')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('status', 'tracking');
+  if (countError) redirect(`/dashboard/purchases/new?error=${encodeURIComponent(countError.message)}`);
+  if ((count ?? 0) >= MAX_ACTIVE_PURCHASES) {
+    redirect(
+      `/dashboard/purchases/new?error=${encodeURIComponent(
+        `The MVP supports up to ${MAX_ACTIVE_PURCHASES} active tracked purchases. Stop tracking or return one before adding another.`,
+      )}`,
+    );
+  }
 
   const { error } = await supabase.from('tracked_purchases').insert({
     user_id: user.id,
@@ -110,6 +147,7 @@ export async function checkCurrentPrice(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+  await requirePaidMonitoringAccess(supabase, user.id);
 
   const { data: purchase, error: purchaseError } = await supabase
     .from('tracked_purchases')
