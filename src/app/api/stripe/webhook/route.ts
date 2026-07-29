@@ -24,7 +24,7 @@ function errorMessage(error: unknown) {
 async function claimEvent(
   supabase: SupabaseClient,
   event: Stripe.Event,
-): Promise<'process' | 'duplicate'> {
+): Promise<'process' | 'duplicate' | 'in_progress'> {
   const { error: insertError } = await supabase.from('stripe_webhook_events').insert({
     stripe_event_id: event.id,
     event_type: event.type,
@@ -50,7 +50,7 @@ async function claimEvent(
     existing.processing_status === 'processing' &&
     Number.isFinite(updatedAt) &&
     Date.now() - updatedAt < 5 * 60 * 1000;
-  if (recentlyClaimed) return 'duplicate';
+  if (recentlyClaimed) return 'in_progress';
 
   const { error: retryError } = await supabase
     .from('stripe_webhook_events')
@@ -228,6 +228,12 @@ export async function POST(request: Request) {
     const claim = await claimEvent(supabase, event);
     if (claim === 'duplicate') {
       return NextResponse.json({ received: true, duplicate: true });
+    }
+    if (claim === 'in_progress') {
+      return NextResponse.json(
+        { error: 'Stripe event is already being processed.' },
+        { status: 409, headers: { 'retry-after': '60' } },
+      );
     }
 
     await processEvent(event, stripe, supabase);
