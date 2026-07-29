@@ -25,7 +25,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function tokenContexts(text: string, token: string, radius = 180): string[] {
+function tokenContexts(text: string, token: string, radius: number): string[] {
   const normalizedToken = token.trim();
   if (!normalizedToken) return [];
 
@@ -61,9 +61,9 @@ function sizeAliases(size: string): string[] {
 function variantContexts(html: string, variant: ProductVariant): string[] {
   const text = visiblePageText(html);
   const sizeContexts = variant.size
-    ? sizeAliases(variant.size).flatMap((alias) => tokenContexts(text, alias))
+    ? sizeAliases(variant.size).flatMap((alias) => tokenContexts(text, alias, 72))
     : [];
-  const colourContexts = variant.colour ? tokenContexts(text, variant.colour, 240) : [];
+  const colourContexts = variant.colour ? tokenContexts(text, variant.colour, 160) : [];
 
   if (sizeContexts.length > 0 && colourContexts.length > 0) {
     const colour = variant.colour!.toLowerCase();
