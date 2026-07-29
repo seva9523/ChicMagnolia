@@ -8,6 +8,7 @@ const serverEnvSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1),
+  CRON_SECRET: z.string().min(24).optional(),
 });
 
 export const serverEnv = serverEnvSchema.parse({
@@ -16,4 +17,5 @@ export const serverEnv = serverEnvSchema.parse({
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
+  CRON_SECRET: process.env.CRON_SECRET,
 });
