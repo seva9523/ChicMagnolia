@@ -46,11 +46,14 @@ export async function startSubscriptionCheckout() {
 
   if (!customerId) {
     try {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: String(user.user_metadata.full_name ?? '').trim() || undefined,
-        metadata: { user_id: user.id },
-      });
+      const customer = await stripe.customers.create(
+        {
+          email: user.email,
+          name: String(user.user_metadata.full_name ?? '').trim() || undefined,
+          metadata: { user_id: user.id },
+        },
+        { idempotencyKey: `chicmagnolia-customer-${user.id}` },
+      );
       customerId = customer.id;
 
       const admin = createSupabaseAdminClient();
@@ -70,6 +73,7 @@ export async function startSubscriptionCheckout() {
 
   let checkoutUrl: string | null = null;
   try {
+    const minuteBucket = Math.floor(Date.now() / 60_000);
     const session = await stripe.checkout.sessions.create(
       buildCheckoutSessionParams({
         userId: user.id,
@@ -77,6 +81,9 @@ export async function startSubscriptionCheckout() {
         priceId: serverEnv.STRIPE_PRICE_ID,
         appUrl: clientEnv.NEXT_PUBLIC_APP_URL,
       }),
+      {
+        idempotencyKey: `chicmagnolia-checkout-${user.id}-${serverEnv.STRIPE_PRICE_ID}-${minuteBucket}`,
+      },
     );
     checkoutUrl = session.url;
   } catch {
