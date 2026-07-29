@@ -68,12 +68,14 @@ function visibleProductPrice(html: string): PriceCandidate | null {
 
   const text = stripTags(section);
   const matches = [...text.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)]
-    .slice(0, 3)
+    .slice(0, 2)
     .map((match) => numericPrice(match[1]))
     .filter((amount): amount is number => amount !== null);
 
   if (matches.length === 0) return null;
 
+  // Mango renders the regular and sale prices together immediately after the
+  // product heading. Ignore every later price, which can belong to recommendations.
   return { amount: Math.min(...matches), currency: 'GBP', priority: 0 };
 }
 
