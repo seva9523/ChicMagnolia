@@ -1,5 +1,6 @@
 import type { ProductVariant, RetailerProductSnapshot } from './types';
 import { parseZaraProductHtml } from './zara';
+import { variantInStock, variantPriceMinor } from './variant';
 
 function decodeHtml(value: string) {
   return value
@@ -69,22 +70,34 @@ export function parseZaraOxylabsHtml(
   variant: ProductVariant,
 ): RetailerProductSnapshot {
   try {
-    return parseZaraProductHtml(html, url, variant);
+    const snapshot = parseZaraProductHtml(html, url, variant);
+    return {
+      ...snapshot,
+      price: {
+        ...snapshot.price,
+        amountMinor: variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
+      },
+      inStock: variantInStock(html, variant, snapshot.inStock),
+    };
   } catch {
     const price = renderedPrice(html);
     if (!price) throw new Error('Zara product metadata was not found.');
 
     const text = stripTags(html).toLowerCase();
+    const defaultInStock =
+      !text.includes('out of stock') && !text.includes('currently unavailable');
+    const basePriceMinor = priceToMinorUnits(price.amount);
+
     return {
       canonicalUrl: url.toString(),
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: priceToMinorUnits(price.amount),
+        amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
         currency: price.currency,
       },
       variant,
-      inStock: !text.includes('out of stock') && !text.includes('currently unavailable'),
+      inStock: variantInStock(html, variant, defaultInStock),
       checkedAt: new Date(),
     };
   }
