@@ -18,8 +18,12 @@ The repository currently includes:
 - daily monitoring through GitHub Actions
 - Resend email alerts when the saved item is cheaper, in stock, and still returnable
 - notification history and duplicate-alert protection
+- one £4.99 monthly Stripe plan through hosted Checkout
+- signed, idempotent Stripe webhook subscription synchronisation
+- Stripe Customer Portal billing and cancellation management
+- server-side paid-access enforcement for purchase creation, manual checks, and scheduled monitoring
 
-ASOS, Uniqlo, H&M, COS, subscriptions, and beta-launch controls remain later-sprint work.
+ASOS, Uniqlo, H&M, COS, founder operations, and beta-launch controls remain later-sprint work.
 
 ## Stack
 
@@ -27,7 +31,7 @@ ASOS, Uniqlo, H&M, COS, subscriptions, and beta-launch controls remain later-spr
 - Tailwind CSS and shadcn/ui
 - Supabase Auth and PostgreSQL
 - Resend
-- Stripe
+- Stripe Checkout, Billing, webhooks, and Customer Portal
 - GitHub Actions
 - Vercel
 - Vitest
@@ -40,6 +44,7 @@ ASOS, Uniqlo, H&M, COS, subscriptions, and beta-launch controls remain later-spr
 - a Vercel deployment
 - an Oxylabs Web Scraper API account
 - a verified Resend sender or domain
+- a Stripe account with test and live products
 
 ## Local setup
 
@@ -86,10 +91,53 @@ ASOS, Uniqlo, H&M, COS, subscriptions, and beta-launch controls remain later-spr
 | `EMAIL_FROM` | Server only | Verified sender address |
 | `CRON_SECRET` | Server only | Bearer token protecting the daily-monitoring endpoint |
 | `STRIPE_SECRET_KEY` | Server only | Stripe test or live secret |
-| `STRIPE_WEBHOOK_SECRET` | Server only | Stripe webhook signature verification |
+| `STRIPE_WEBHOOK_SECRET` | Server only | Stripe endpoint signing secret |
+| `STRIPE_PRICE_ID` | Server only | Recurring GBP monthly price for the £4.99 plan |
 
 Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Store
 production values in Vercel project settings.
+
+## Stripe subscription setup
+
+ChicMagnolia deliberately has one MVP plan: £4.99 GBP every month. Do not add coupons,
+annual billing, or additional tiers.
+
+1. In Stripe test mode, create a product named `ChicMagnolia Monthly` with one recurring
+   monthly GBP price of `£4.99`.
+2. Store its `price_...` ID as `STRIPE_PRICE_ID` and the matching test secret key as
+   `STRIPE_SECRET_KEY` in Vercel Preview and Production while testing.
+3. Apply `supabase/migrations/202607290002_create_stripe_subscriptions.sql`.
+4. Register the production webhook endpoint:
+
+   ```text
+   https://your-production-domain/api/stripe/webhook
+   ```
+
+   Subscribe it to:
+
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `customer.subscription.paused`
+   - `customer.subscription.resumed`
+   - `invoice.paid`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+   - `invoice.payment_action_required`
+
+5. Store the endpoint signing secret as `STRIPE_WEBHOOK_SECRET` and redeploy.
+6. Activate and configure the Stripe Customer Portal to allow payment-method updates,
+   invoice history, and cancellation at period end.
+7. Repeat the product, price, webhook, and environment configuration in live mode before
+   the paid beta. Never mix test IDs with live keys.
+
+The signed webhook is authoritative. Returning from Checkout only shows a pending
+message and never grants access by itself. Active and trialing users can monitor.
+Cancel-at-period-end users retain access until the recorded period end. Past-due,
+unpaid, paused, incomplete, and canceled states retain read access to existing data but
+cannot create purchases or run monitoring. The MVP limit is 10 active purchases per
+subscriber.
 
 ## Daily monitoring setup
 
@@ -107,6 +155,7 @@ running when either GitHub secret is missing.
 
 The endpoint checks three purchases per request to remain inside the Vercel request
 limit. The workflow runs up to 50 batches, covering up to 150 due purchases each day.
+Only users with active paid monitoring access are included.
 
 An email is sent only when all of these conditions are true:
 
@@ -138,6 +187,6 @@ src/integrations/        Stripe and Resend clients
 src/lib/env/             Runtime environment validation
 src/lib/supabase/        Browser, session, and admin Supabase clients
 src/retailers/           Retailer adapters and variant parsers
-src/services/            Monitoring and alert business logic
+src/services/            Monitoring, billing, and alert business logic
 supabase/migrations/     PostgreSQL schema changes
 ```
