@@ -25,11 +25,34 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function containsToken(text: string, token: string): boolean {
+  const expression = new RegExp(
+    `(^|[^a-z0-9])${escapeRegExp(token.trim())}(?=$|[^a-z0-9])`,
+    'i',
+  );
+  return expression.test(text);
+}
+
+function optionElementContexts(html: string, token: string): string[] {
+  const contexts: string[] = [];
+  const elementPattern = /<(button|li|option|div|span)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+
+  for (const match of html.matchAll(elementPattern)) {
+    const text = visiblePageText(match[0]);
+    if (containsToken(text, token)) contexts.push(text);
+  }
+
+  return contexts;
+}
+
 function tokenContexts(text: string, token: string, radius: number): string[] {
   const normalizedToken = token.trim();
   if (!normalizedToken) return [];
 
-  const expression = new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedToken)}(?=$|[^a-z0-9])`, 'gi');
+  const expression = new RegExp(
+    `(^|[^a-z0-9])${escapeRegExp(normalizedToken)}(?=$|[^a-z0-9])`,
+    'gi',
+  );
   const contexts: string[] = [];
 
   for (const match of text.matchAll(expression)) {
@@ -46,7 +69,10 @@ function sizeAliases(size: string): string[] {
   const upper = value.toUpperCase();
 
   const clothingSize = upper.match(/^(?:UK\s*)?(\d{1,2})$/)?.[1];
-  if (clothingSize) aliases.add(clothingSize);
+  if (clothingSize) {
+    aliases.add(clothingSize);
+    aliases.add(`UK ${clothingSize}`);
+  }
 
   const letter = upper.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/)?.[1];
   if (letter) {
@@ -58,12 +84,21 @@ function sizeAliases(size: string): string[] {
   return [...aliases].filter((alias) => alias.length > 0);
 }
 
-function variantContexts(html: string, variant: ProductVariant): string[] {
+function contextsForTokens(html: string, tokens: string[], fallbackRadius: number): string[] {
+  const elementContexts = tokens.flatMap((token) => optionElementContexts(html, token));
+  if (elementContexts.length > 0) return [...new Set(elementContexts)];
+
   const text = visiblePageText(html);
+  return tokens.flatMap((token) => tokenContexts(text, token, fallbackRadius));
+}
+
+function variantContexts(html: string, variant: ProductVariant): string[] {
   const sizeContexts = variant.size
-    ? sizeAliases(variant.size).flatMap((alias) => tokenContexts(text, alias, 40))
+    ? contextsForTokens(html, sizeAliases(variant.size), 28)
     : [];
-  const colourContexts = variant.colour ? tokenContexts(text, variant.colour, 160) : [];
+  const colourContexts = variant.colour
+    ? contextsForTokens(html, [variant.colour], 120)
+    : [];
 
   if (sizeContexts.length > 0 && colourContexts.length > 0) {
     const colour = variant.colour!.toLowerCase();
