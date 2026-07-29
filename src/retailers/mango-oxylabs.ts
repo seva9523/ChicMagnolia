@@ -1,5 +1,6 @@
 import type { ProductVariant, RetailerProductSnapshot } from './types';
 import { parseMangoProductHtml } from './mango';
+import { variantInStock, variantPriceMinor } from './variant';
 
 function decodeHtml(value: string) {
   return value
@@ -73,9 +74,6 @@ function visibleProductPrice(html: string): PriceCandidate | null {
 
   if (matches.length === 0) return null;
 
-  // Mango places the original and current prices together immediately after the
-  // product heading. Restricting extraction to this section avoids prices from
-  // recommendations and promotional content elsewhere on the page.
   return { amount: Math.min(...matches), currency: 'GBP', priority: 0 };
 }
 
@@ -153,22 +151,33 @@ export function parseMangoOxylabsHtml(
 
   if (currentPrice) {
     const text = stripTags(html).toLowerCase();
+    const defaultInStock =
+      !text.includes('out of stock') &&
+      !text.includes('sold out') &&
+      !text.includes('currently unavailable');
+    const basePriceMinor = Math.round(currentPrice.amount * 100);
+
     return {
       canonicalUrl: url.toString(),
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: Math.round(currentPrice.amount * 100),
+        amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
         currency: currentPrice.currency,
       },
       variant,
-      inStock:
-        !text.includes('out of stock') &&
-        !text.includes('sold out') &&
-        !text.includes('currently unavailable'),
+      inStock: variantInStock(html, variant, defaultInStock),
       checkedAt: new Date(),
     };
   }
 
-  return parseMangoProductHtml(html, url, variant);
+  const snapshot = parseMangoProductHtml(html, url, variant);
+  return {
+    ...snapshot,
+    price: {
+      ...snapshot.price,
+      amountMinor: variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
+    },
+    inStock: variantInStock(html, variant, snapshot.inStock),
+  };
 }
