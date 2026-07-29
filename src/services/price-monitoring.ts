@@ -133,6 +133,8 @@ async function sendPriceDropAlert(
     if (existingError) throw new Error(existingError.message);
     if (existing) return 'duplicate';
 
+    if (!serverEnv.EMAIL_FROM) throw new Error('Email sender is not configured.');
+
     const email = buildPriceDropEmail({
       retailerName: purchase.retailer_name,
       productName: purchase.product_name,
