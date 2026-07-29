@@ -1,6 +1,6 @@
 import type { ProductVariant, RetailerProductSnapshot } from './types';
 import { parseMangoProductHtml } from './mango';
-import { variantInStock, variantPriceMinor } from './variant';
+import { variantInStock } from './variant';
 
 function decodeHtml(value: string) {
   return value
@@ -68,12 +68,14 @@ function visibleProductPrice(html: string): PriceCandidate | null {
 
   const text = stripTags(section);
   const matches = [...text.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)]
-    .slice(0, 3)
+    .slice(0, 2)
     .map((match) => numericPrice(match[1]))
     .filter((amount): amount is number => amount !== null);
 
   if (matches.length === 0) return null;
 
+  // Mango renders the regular and sale prices together immediately after the
+  // product heading. Ignore every later price, which can belong to recommendations.
   return { amount: Math.min(...matches), currency: 'GBP', priority: 0 };
 }
 
@@ -162,7 +164,7 @@ export function parseMangoOxylabsHtml(
       retailerProductId: productIdFromUrl(url),
       title: titleFromHtml(html),
       price: {
-        amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
+        amountMinor: basePriceMinor,
         currency: currentPrice.currency,
       },
       variant,
@@ -174,10 +176,6 @@ export function parseMangoOxylabsHtml(
   const snapshot = parseMangoProductHtml(html, url, variant);
   return {
     ...snapshot,
-    price: {
-      ...snapshot.price,
-      amountMinor: variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
-    },
     inStock: variantInStock(html, variant, snapshot.inStock),
   };
 }
