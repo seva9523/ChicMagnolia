@@ -4,6 +4,7 @@ import type {
   RetailerProductSnapshot,
   RetailerReturnPolicy,
 } from './types';
+import { variantInStock, variantPriceMinor } from './variant';
 
 const NEXT_RETURN_POLICY_URL = 'https://www.next.co.uk/help/returns';
 const BROWSERLESS_CONTENT_ENDPOINT =
@@ -87,20 +88,23 @@ export function parseNextProductHtml(
     stripTags(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '') ??
     'Next product';
   const text = stripTags(html).toLowerCase();
+  const defaultInStock =
+    !text.includes('out of stock') && !text.includes('currently unavailable');
+  const basePriceMinor = priceToMinorUnits(price);
 
   return {
     canonicalUrl: metaContent(html, 'og:url') ?? url.toString(),
     retailerProductId: productCodeFromHtml(html) ?? productIdFromUrl(url),
     title: title || 'Next product',
     price: {
-      amountMinor: priceToMinorUnits(price),
+      amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
       currency:
         metaContent(html, 'product:price:currency') ??
         metaContent(html, 'og:price:currency') ??
         'GBP',
     },
     variant,
-    inStock: !text.includes('out of stock') && !text.includes('currently unavailable'),
+    inStock: variantInStock(html, variant, defaultInStock),
     checkedAt: new Date(),
   };
 }
