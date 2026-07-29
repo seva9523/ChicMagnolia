@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getResendClient } from '@/integrations/resend';
 import { clientEnv } from '@/lib/env/client';
 import { serverEnv } from '@/lib/env/server';
-import { retailerAdapters } from '@/retailers';
+import { fetchProductForDailyMonitoring, retailerAdapters } from '@/retailers';
 import type { RetailerProductSnapshot } from '@/retailers/types';
 import { buildPriceDropEmail, isPriceDropAlertEligible } from '@/services/price-alerts';
 
@@ -32,6 +32,8 @@ export type MonitoredPurchaseOutcome = {
   alert: 'sent' | 'duplicate' | 'not_eligible' | 'missing_email' | 'failed';
   error?: string;
 };
+
+type PriceCheckMode = 'interactive' | 'daily';
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Price check failed.';
@@ -67,18 +69,25 @@ async function persistFailedCheck(
 export async function performPriceCheck(
   supabase: SupabaseClient,
   purchase: TrackedPurchaseForCheck,
+  mode: PriceCheckMode = 'interactive',
 ): Promise<PriceCheckOutcome> {
   try {
     if (purchase.status !== 'tracking') throw new Error('Only active purchases can be checked.');
 
     const url = new URL(purchase.product_url);
-    const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
-    if (!adapter) throw new Error('This retailer is not supported yet.');
-
-    const snapshot = await adapter.fetchProduct(url, {
+    const variant = {
       size: purchase.size,
       colour: purchase.colour,
-    });
+    };
+
+    const snapshot =
+      mode === 'daily'
+        ? await fetchProductForDailyMonitoring(url, variant)
+        : await (async () => {
+            const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
+            if (!adapter) throw new Error('This retailer is not supported yet.');
+            return adapter.fetchProduct(url, variant);
+          })();
 
     const { error: checkError } = await supabase.from('price_checks').insert({
       purchase_id: purchase.id,
@@ -200,7 +209,7 @@ export async function monitorTrackedPurchase(
   userEmail: string | null,
   now = new Date(),
 ): Promise<MonitoredPurchaseOutcome> {
-  const check = await performPriceCheck(supabase, purchase);
+  const check = await performPriceCheck(supabase, purchase, 'daily');
   if (!check.ok) return { check: 'failed', alert: 'not_eligible', error: check.error };
 
   if (!userEmail) return { check: 'succeeded', alert: 'missing_email' };
