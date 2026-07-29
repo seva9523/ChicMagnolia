@@ -15,6 +15,7 @@ export async function fetchOxylabsHtml(
     username: process.env.OXYLABS_USERNAME,
     password: process.env.OXYLABS_PASSWORD,
   },
+  timeoutMs = 90_000,
 ): Promise<string> {
   if (!credentials.username || !credentials.password) {
     throw new Error('Oxylabs is not configured.');
@@ -38,7 +39,7 @@ export async function fetchOxylabsHtml(
       render: 'html',
     }),
     cache: 'no-store',
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {

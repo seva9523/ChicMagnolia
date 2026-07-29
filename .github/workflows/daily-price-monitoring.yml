@@ -30,19 +30,42 @@ jobs:
 
           endpoint="${APP_URL%/}/api/cron/daily-price-check"
 
-          # The endpoint handles three purchases per request to stay inside Vercel's
-          # request duration. Fifty batches cover up to 150 active purchases daily,
-          # which is sufficient for the first-user beta target.
+          # The endpoint handles three purchases per request. Fifty batches cover up
+          # to 150 active purchases daily, which is sufficient for the first-user beta.
           for batch in $(seq 1 50); do
             echo "Running monitoring batch ${batch}..."
-            response=$(curl \
+            response_file=$(mktemp)
+
+            if ! http_code=$(curl \
               --silent \
               --show-error \
-              --fail-with-body \
+              --max-time 65 \
+              --output "${response_file}" \
+              --write-out "%{http_code}" \
               --request POST \
               --header "Authorization: Bearer ${CRON_SECRET}" \
               --header "Content-Type: application/json" \
-              "${endpoint}")
+              "${endpoint}"); then
+              echo "::warning::Monitoring request did not complete. Retrying with the next batch."
+              rm -f "${response_file}"
+              sleep 5
+              continue
+            fi
+
+            response=$(cat "${response_file}")
+            rm -f "${response_file}"
+
+            if [ "${http_code}" = "502" ] || [ "${http_code}" = "504" ] || [ "${http_code}" = "429" ]; then
+              echo "::warning::Monitoring endpoint returned HTTP ${http_code}. It may have partially completed; continuing safely."
+              sleep 5
+              continue
+            fi
+
+            if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+              echo "${response}"
+              echo "::error::Monitoring endpoint returned HTTP ${http_code}."
+              exit 1
+            fi
 
             echo "${response}" | jq .
             processed=$(echo "${response}" | jq -r '.processed // 0')

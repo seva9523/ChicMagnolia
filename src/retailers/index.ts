@@ -24,6 +24,17 @@ type ProductParser = (
   variant: ProductVariant,
 ) => RetailerProductSnapshot;
 
+type RetailerConfiguration = {
+  adapter: RetailerAdapter;
+  parseProductHtml: ProductParser;
+};
+
+const retailerConfigurations: readonly RetailerConfiguration[] = [
+  { adapter: nextAdapter, parseProductHtml: parseNextProductHtml },
+  { adapter: mangoAdapter, parseProductHtml: parseMangoOxylabsHtml },
+  { adapter: zaraAdapter, parseProductHtml: parseZaraOxylabsHtml },
+];
+
 function withOxylabsFallback(
   adapter: RetailerAdapter,
   parseProductHtml: ProductParser,
@@ -48,12 +59,25 @@ function withOxylabsFallback(
   };
 }
 
-export const retailerAdapters = [
-  withOxylabsFallback(nextAdapter, parseNextProductHtml),
-  withOxylabsFallback(mangoAdapter, parseMangoOxylabsHtml),
-  withOxylabsFallback(zaraAdapter, parseZaraOxylabsHtml),
-] as const;
+export const retailerAdapters = retailerConfigurations.map(({ adapter, parseProductHtml }) =>
+  withOxylabsFallback(adapter, parseProductHtml),
+);
 
 export function findRetailerAdapter(url: URL) {
   return retailerAdapters.find((adapter) => adapter.supports(url)) ?? null;
+}
+
+export async function fetchProductForDailyMonitoring(
+  url: URL,
+  variant: ProductVariant,
+): Promise<RetailerProductSnapshot> {
+  const configuration = retailerConfigurations.find(({ adapter }) => adapter.supports(url));
+  if (!configuration) throw new Error('This retailer is not supported yet.');
+
+  // The interactive adapters first try direct and Browserless requests. Those are
+  // useful for manual checks, but can consume almost the entire 60-second Vercel
+  // function window before reaching the working Oxylabs fallback. Scheduled checks
+  // go directly to the rendered UK page and leave time to persist results and email.
+  const html = await fetchOxylabsHtml(url, undefined, 42_000);
+  return configuration.parseProductHtml(html, url, variant);
 }
