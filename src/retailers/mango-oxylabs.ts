@@ -169,6 +169,68 @@ function currentProductPrice(html: string, url: URL): PriceCandidate | null {
   return productId ? scopedJsonPrice(html, productId) : null;
 }
 
+const mangoUnavailableSignals = [
+  'not available',
+  'unavailable',
+  'out of stock',
+  'sold out',
+  'i want it',
+  'notify me',
+];
+
+function selectedSizeMatches(requestedSize: string, numericSize: string, letterSize: string): boolean {
+  const normalized = requestedSize.trim().toUpperCase();
+  const numeric = normalized.match(/\b(\d{1,2})\b/)?.[1];
+  const letter = normalized.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/)?.[1];
+
+  return numeric === numericSize || letter === letterSize;
+}
+
+function mangoSelectedSizeAvailability(html: string, size: string | null): boolean | null {
+  if (!size) return null;
+
+  // Mango's product URL already identifies the selected colour. Its size list uses
+  // rows such as "14 (EUR XL)"; unavailable rows append "NOT AVAILABLE. I WANT IT!",
+  // while available rows have no unavailability suffix. Parse each row independently
+  // so an unavailable XS/S/M cannot make the selected L/XL appear unavailable.
+  const section = visibleProductSection(html) ?? html;
+  const text = stripTags(section);
+  const rowPattern = /\b(\d{1,2})\s*\(\s*EUR\s+(XXS|XS|S|M|L|XL|XXL|XXXL)\s*\)/gi;
+  const rows = [...text.matchAll(rowPattern)];
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (!selectedSizeMatches(size, row[1], row[2].toUpperCase())) continue;
+
+    const start = row.index ?? 0;
+    const end = rows[index + 1]?.index ?? Math.min(text.length, start + 220);
+    const rowText = text.slice(start, end).toLowerCase();
+
+    return !mangoUnavailableSignals.some((signal) => rowText.includes(signal));
+  }
+
+  return null;
+}
+
+function mangoProductInStock(html: string): boolean {
+  const text = stripTags(visibleProductSection(html) ?? html).toLowerCase();
+  const globalUnavailableSignals = [
+    'this item is no longer available',
+    'this product is unavailable',
+    'product unavailable',
+    'not available online',
+  ];
+
+  return !globalUnavailableSignals.some((signal) => text.includes(signal));
+}
+
+function mangoVariantInStock(html: string, variant: ProductVariant): boolean {
+  const selectedSizeAvailability = mangoSelectedSizeAvailability(html, variant.size);
+  if (selectedSizeAvailability !== null) return selectedSizeAvailability;
+
+  return variantInStock(html, variant, mangoProductInStock(html));
+}
+
 export function parseMangoOxylabsHtml(
   html: string,
   url: URL,
@@ -177,11 +239,6 @@ export function parseMangoOxylabsHtml(
   const currentPrice = currentProductPrice(html, url);
 
   if (currentPrice) {
-    const text = stripTags(html).toLowerCase();
-    const defaultInStock =
-      !text.includes('out of stock') &&
-      !text.includes('sold out') &&
-      !text.includes('currently unavailable');
     const basePriceMinor = Math.round(currentPrice.amount * 100);
 
     return {
@@ -193,7 +250,7 @@ export function parseMangoOxylabsHtml(
         currency: currentPrice.currency,
       },
       variant,
-      inStock: variantInStock(html, variant, defaultInStock),
+      inStock: mangoVariantInStock(html, variant),
       checkedAt: new Date(),
     };
   }
@@ -201,6 +258,6 @@ export function parseMangoOxylabsHtml(
   const snapshot = parseMangoProductHtml(html, url, variant);
   return {
     ...snapshot,
-    inStock: variantInStock(html, variant, snapshot.inStock),
+    inStock: mangoVariantInStock(html, variant),
   };
 }
