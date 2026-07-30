@@ -6,15 +6,27 @@ export type {
   RetailerReturnPolicy,
 } from './types';
 
+export { asosAdapter } from './asos';
 export { mangoAdapter } from './mango';
 export { nextAdapter } from './next';
+export { uniqloAdapter } from './uniqlo';
 export { zaraAdapter } from './zara';
 
+import { asosAdapter, parseAsosProductHtml } from './asos';
+import {
+  fetchAsosProductInteractive,
+  fetchAsosProductViaOxylabs,
+} from './asos-oxylabs';
 import { mangoAdapter } from './mango';
 import { parseMangoOxylabsHtml } from './mango-oxylabs';
 import { nextAdapter, parseNextProductHtml } from './next';
 import { fetchOxylabsHtml } from './oxylabs';
-import type { ProductVariant, RetailerAdapter, RetailerProductSnapshot } from './types';
+import type {
+  ProductVariant,
+  RetailerAdapter,
+  RetailerProductSnapshot,
+} from './types';
+import { parseUniqloProductHtml, uniqloAdapter } from './uniqlo';
 import { zaraAdapter } from './zara';
 import { parseZaraOxylabsHtml } from './zara-oxylabs';
 
@@ -24,12 +36,26 @@ type ProductParser = (
   variant: ProductVariant,
 ) => RetailerProductSnapshot;
 
+type ProductFetcher = (
+  url: URL,
+  variant: ProductVariant,
+) => Promise<RetailerProductSnapshot>;
+
 type RetailerConfiguration = {
   adapter: RetailerAdapter;
   parseProductHtml: ProductParser;
+  fetchInteractive?: ProductFetcher;
+  fetchScheduled?: ProductFetcher;
 };
 
 const retailerConfigurations: readonly RetailerConfiguration[] = [
+  {
+    adapter: asosAdapter,
+    parseProductHtml: parseAsosProductHtml,
+    fetchInteractive: fetchAsosProductInteractive,
+    fetchScheduled: fetchAsosProductViaOxylabs,
+  },
+  { adapter: uniqloAdapter, parseProductHtml: parseUniqloProductHtml },
   { adapter: nextAdapter, parseProductHtml: parseNextProductHtml },
   { adapter: mangoAdapter, parseProductHtml: parseMangoOxylabsHtml },
   { adapter: zaraAdapter, parseProductHtml: parseZaraOxylabsHtml },
@@ -49,19 +75,39 @@ function withOxylabsFallback(
           return parseProductHtml(await fetchOxylabsHtml(url), url, variant);
         } catch (oxylabsError) {
           const primaryMessage =
-            primaryError instanceof Error ? primaryError.message : 'Primary retailer request failed.';
+            primaryError instanceof Error
+              ? primaryError.message
+              : 'Primary retailer request failed.';
           const oxylabsMessage =
-            oxylabsError instanceof Error ? oxylabsError.message : 'Oxylabs fallback failed.';
-          throw new Error(`${primaryMessage} Oxylabs fallback: ${oxylabsMessage}`);
+            oxylabsError instanceof Error
+              ? oxylabsError.message
+              : 'Oxylabs fallback failed.';
+          throw new Error(
+            `${primaryMessage} Oxylabs fallback: ${oxylabsMessage}`,
+          );
         }
       }
     },
   };
 }
 
-export const retailerAdapters = retailerConfigurations.map(({ adapter, parseProductHtml }) =>
-  withOxylabsFallback(adapter, parseProductHtml),
-);
+function registeredAdapter(
+  configuration: RetailerConfiguration,
+): RetailerAdapter {
+  if (configuration.fetchInteractive) {
+    return {
+      ...configuration.adapter,
+      fetchProduct: configuration.fetchInteractive,
+    };
+  }
+
+  return withOxylabsFallback(
+    configuration.adapter,
+    configuration.parseProductHtml,
+  );
+}
+
+export const retailerAdapters = retailerConfigurations.map(registeredAdapter);
 
 export function findRetailerAdapter(url: URL) {
   return retailerAdapters.find((adapter) => adapter.supports(url)) ?? null;
@@ -71,13 +117,17 @@ export async function fetchProductForDailyMonitoring(
   url: URL,
   variant: ProductVariant,
 ): Promise<RetailerProductSnapshot> {
-  const configuration = retailerConfigurations.find(({ adapter }) => adapter.supports(url));
+  const configuration = retailerConfigurations.find(({ adapter }) =>
+    adapter.supports(url),
+  );
   if (!configuration) throw new Error('This retailer is not supported yet.');
 
-  // The interactive adapters first try direct and Browserless requests. Those are
-  // useful for manual checks, but can consume almost the entire 60-second Vercel
-  // function window before reaching the working Oxylabs fallback. Scheduled checks
-  // go directly to the rendered UK page and leave time to persist results and email.
+  if (configuration.fetchScheduled) {
+    return configuration.fetchScheduled(url, variant);
+  }
+
+  // Scheduled monitoring uses the rendered UK Oxylabs route immediately so
+  // persistence and email work remain inside the Vercel function window.
   const html = await fetchOxylabsHtml(url, undefined, 42_000);
   return configuration.parseProductHtml(html, url, variant);
 }
