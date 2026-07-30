@@ -9,6 +9,12 @@ import {
   performPriceCheck,
   type TrackedPurchaseForCheck,
 } from '@/services/price-monitoring';
+import {
+  getUserSubscription,
+  hasMonitoringAccess,
+} from '@/services/subscription-access';
+
+const MAX_ACTIVE_PURCHASES = 10;
 
 const purchaseSchema = z
   .object({
@@ -28,6 +34,37 @@ const purchaseSchema = z
 
 function field(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
+}
+
+async function requirePaidMonitoringAccess(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  let subscription;
+  try {
+    subscription = await getUserSubscription(supabase, userId);
+  } catch {
+    redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+  }
+
+  if (!hasMonitoringAccess(subscription)) {
+    redirect(
+      '/dashboard/billing?message=An active ChicMagnolia subscription is required for monitoring.',
+    );
+  }
+}
+
+async function activePurchaseCount(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
+  const { count, error } = await supabase
+    .from('tracked_purchases')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'tracking');
+  if (error) throw new Error(error.message);
+  return count ?? 0;
 }
 
 export async function createPurchase(formData: FormData) {
@@ -53,6 +90,22 @@ export async function createPurchase(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
+  await requirePaidMonitoringAccess(supabase, user.id);
+
+  let count = 0;
+  try {
+    count = await activePurchaseCount(supabase, user.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Active purchases could not be counted.';
+    redirect(`/dashboard/purchases/new?error=${encodeURIComponent(message)}`);
+  }
+  if (count >= MAX_ACTIVE_PURCHASES) {
+    redirect(
+      `/dashboard/purchases/new?error=${encodeURIComponent(
+        `The MVP supports up to ${MAX_ACTIVE_PURCHASES} active tracked purchases. Stop tracking or return one before adding another.`,
+      )}`,
+    );
+  }
 
   const { error } = await supabase.from('tracked_purchases').insert({
     user_id: user.id,
@@ -89,6 +142,28 @@ export async function updatePurchaseStatus(formData: FormData) {
 
   if (!user) redirect('/login');
 
+  const { data: existing, error: existingError } = await supabase
+    .from('tracked_purchases')
+    .select('status')
+    .eq('id', purchaseId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (existingError || !existing) redirect('/dashboard?message=Purchase could not be found.');
+
+  if (status === 'tracking' && existing.status !== 'tracking') {
+    await requirePaidMonitoringAccess(supabase, user.id);
+
+    let count = 0;
+    try {
+      count = await activePurchaseCount(supabase, user.id);
+    } catch {
+      redirect('/dashboard?message=Active purchases could not be counted.');
+    }
+    if (count >= MAX_ACTIVE_PURCHASES) {
+      redirect(`/dashboard?message=Only ${MAX_ACTIVE_PURCHASES} purchases can be actively tracked.`);
+    }
+  }
+
   const { error } = await supabase
     .from('tracked_purchases')
     .update({ status })
@@ -110,6 +185,7 @@ export async function checkCurrentPrice(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+  await requirePaidMonitoringAccess(supabase, user.id);
 
   const { data: purchase, error: purchaseError } = await supabase
     .from('tracked_purchases')

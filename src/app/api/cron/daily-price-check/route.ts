@@ -8,12 +8,17 @@ import {
   monitorTrackedPurchase,
   type TrackedPurchaseForCheck,
 } from '@/services/price-monitoring';
+import {
+  hasMonitoringAccess,
+  type SubscriptionRecord,
+} from '@/services/subscription-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const BATCH_SIZE = 3;
+const MAX_BETA_PURCHASES = 500;
 
 function authorized(request: Request) {
   const expected = serverEnv.CRON_SECRET;
@@ -62,7 +67,7 @@ export async function POST(request: Request) {
     .gte('return_deadline', today)
     .or(`last_checked_at.is.null,last_checked_at.lt.${startOfToday}`)
     .order('last_checked_at', { ascending: true, nullsFirst: true })
-    .limit(BATCH_SIZE);
+    .limit(MAX_BETA_PURCHASES);
 
   if (error) {
     return NextResponse.json(
@@ -71,7 +76,34 @@ export async function POST(request: Request) {
     );
   }
 
-  const purchases = (data ?? []) as TrackedPurchaseForCheck[];
+  const duePurchases = (data ?? []) as TrackedPurchaseForCheck[];
+  const dueUserIds = [...new Set(duePurchases.map((purchase) => purchase.user_id))];
+  const subscriptions = new Map<string, SubscriptionRecord>();
+
+  if (dueUserIds.length > 0) {
+    const { data: subscriptionRows, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select(
+        'user_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, cancel_at_period_end, current_period_start, current_period_end, trial_end, ended_at, last_event_created',
+      )
+      .in('user_id', dueUserIds);
+
+    if (subscriptionError) {
+      return NextResponse.json(
+        { error: `Could not load subscription access: ${subscriptionError.message}` },
+        { status: 500 },
+      );
+    }
+
+    for (const subscription of (subscriptionRows ?? []) as SubscriptionRecord[]) {
+      subscriptions.set(subscription.user_id, subscription);
+    }
+  }
+
+  const eligibleDuePurchases = duePurchases.filter((purchase) =>
+    hasMonitoringAccess(subscriptions.get(purchase.user_id), now),
+  );
+  const purchases = eligibleDuePurchases.slice(0, BATCH_SIZE);
   const userIds = [...new Set(purchases.map((purchase) => purchase.user_id))];
   const emails = new Map<string, string>();
   let profileLookupError: string | null = null;
@@ -97,20 +129,6 @@ export async function POST(request: Request) {
     ),
   );
 
-  const { count: remaining, error: remainingError } = await supabase
-    .from('tracked_purchases')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'tracking')
-    .gte('return_deadline', today)
-    .or(`last_checked_at.is.null,last_checked_at.lt.${startOfToday}`);
-
-  if (remainingError) {
-    return NextResponse.json(
-      { error: `Checks ran, but the remaining count failed: ${remainingError.message}` },
-      { status: 500 },
-    );
-  }
-
   const response = {
     processed: purchases.length,
     succeeded: outcomes.filter((outcome) => outcome.check === 'succeeded').length,
@@ -120,7 +138,8 @@ export async function POST(request: Request) {
     alertsNotEligible: outcomes.filter((outcome) => outcome.alert === 'not_eligible').length,
     missingEmail: outcomes.filter((outcome) => outcome.alert === 'missing_email').length,
     alertFailures: outcomes.filter((outcome) => outcome.alert === 'failed').length,
-    remaining: remaining ?? 0,
+    billingIneligibleSkipped: duePurchases.length - eligibleDuePurchases.length,
+    remaining: Math.max(0, eligibleDuePurchases.length - purchases.length),
     checkedAt: now.toISOString(),
     profileLookupError,
   };
