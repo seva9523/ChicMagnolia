@@ -12,19 +12,24 @@ The repository currently includes:
 - manual purchase tracking with purchase price, date, return deadline, size, and colour
 - returned and stopped-tracking statuses
 - on-demand current-price and stock checks
-- Zara UK, Mango UK, Next UK, ASOS UK, and UNIQLO UK retailer adapters
-- retailer-specific anti-bot fallbacks: ASOS uses one rendered UK Oxylabs request; UNIQLO and the existing adapters retain direct, Browserless, and Oxylabs routes
+- Zara UK, Mango UK, Next UK, ASOS UK, UNIQLO UK, H&M UK, and COS UK retailer adapters
+- retailer-specific anti-bot fallbacks: ASOS uses one rendered UK Oxylabs request; H&M
+  and COS use direct fetch followed by Oxylabs; UNIQLO and the earlier adapters retain
+  their existing direct, Browserless, and Oxylabs routes
 - current sale-price parsing with saved size and colour variant isolation
 - ASOS `colourWayId` preservation for the exact saved colourway
+- H&M exact-size offer availability and sale-price parsing
+- COS exact-size item stock with regular and historical prices excluded from current price
 - daily monitoring through GitHub Actions
 - Resend email alerts when the saved item is cheaper, in stock, and still returnable
 - notification history and duplicate-alert protection
 - one £4.99 monthly Stripe plan through hosted Checkout
 - signed, idempotent Stripe webhook subscription synchronisation
 - Stripe Customer Portal billing and cancellation management
-- server-side paid-access enforcement for purchase creation, manual checks, and scheduled monitoring
+- server-side paid-access enforcement for purchase creation, manual checks, and scheduled
+  monitoring
 
-H&M, COS, founder operations, and beta-launch controls remain later-sprint work.
+Founder operations and beta-launch controls remain later-sprint work.
 
 ## Stack
 
@@ -140,6 +145,14 @@ unpaid, paused, incomplete, and canceled states retain read access to existing d
 cannot create purchases or run monitoring. The MVP limit is 10 active purchases per
 subscriber.
 
+## Retailer return deadlines
+
+The purchase form stores the exact return deadline from the user's order rather than
+recalculating it during each price check. This is important because retailer exceptions
+can shorten the standard window. H&M UK currently states a 30-day return period for
+full-price purchases and 14 days for sale items; users should therefore enter the date
+shown for their specific order. COS UK uses a 30-day standard online return period.
+
 ## Daily monitoring setup
 
 The scheduled workflow is `.github/workflows/daily-price-monitoring.yml`. It runs at
@@ -159,7 +172,9 @@ limit. The workflow runs up to 50 batches, covering up to 150 due purchases each
 Only users with active paid monitoring access are included. Scheduled retailer checks
 use the fast rendered UK Oxylabs route immediately. ASOS reads the exact colourway,
 current sale price, and selected-size stock from raw page state. UNIQLO reads its current
-sale price and the selected size's hydrated strike state.
+sale price and the selected size's hydrated strike state. H&M uses the exact saved size's
+offer and availability. COS uses the exact saved size item from its product state and
+ignores regular and lowest-historical reference prices.
 
 An email is sent only when all of these conditions are true:
 

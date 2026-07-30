@@ -8,6 +8,12 @@ const asosUrl = new URL(
 const uniqloUrl = new URL(
   'https://www.uniqlo.com/uk/en/products/E479407-000/00?colorDisplayCode=08&sizeDisplayCode=004',
 );
+const hmUrl = new URL(
+  'https://www2.hm.com/en_gb/productpage.1265326001.html',
+);
+const cosUrl = new URL(
+  'https://www.cos.com/en-gb/women/womenswear/tshirts/regular/product/crew-neck-linen-t-shirt-white-brown-striped-1326337004',
+);
 
 const embeddedAsosHtml = `
   <html>
@@ -26,15 +32,71 @@ const embeddedAsosHtml = `
   </html>
 `;
 
+const hmHtml = `
+  <html>
+    <head><meta property="product:price:currency" content="GBP" /></head>
+    <body>
+      <h1>Bubble-hem strappy dress</h1>
+      <span data-testid="red-price">£14.00</span>
+      <div>Colour: Black</div>
+      <script type="application/ld+json">
+        {
+          "@type": "ProductGroup",
+          "hasVariant": [
+            {
+              "@type": "Product",
+              "sku": "1265326001003",
+              "color": "Black",
+              "size": "S",
+              "offers": { "price": 14, "availability": "https://schema.org/InStock" }
+            }
+          ]
+        }
+      </script>
+    </body>
+  </html>
+`;
+
+const cosHtml = `
+  <html>
+    <head>
+      <meta property="product:price:currency" content="GBP" />
+      <meta property="og:title" content="CREW-NECK LINEN T-SHIRT - WHITE / BROWN / STRIPED | COS GB" />
+    </head>
+    <body>
+      <h1>CREW-NECK LINEN T-SHIRT</h1>
+      <script id="__NEXT_DATA__" type="application/json">
+        {
+          "props": {
+            "pageProps": {
+              "product": {
+                "name": "CREW-NECK LINEN T-SHIRT",
+                "variantName": "WHITE / BROWN / STRIPED",
+                "sku": "1326337004",
+                "priceAsNumber": 35,
+                "items": [
+                  { "name": "XS", "sku": "1326337004002", "stock": "yes" }
+                ]
+              }
+            }
+          }
+        }
+      </script>
+    </body>
+  </html>
+`;
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
 describe('Sprint 6 retailer registry', () => {
-  it('registers ASOS UK and UNIQLO UK', () => {
+  it('registers ASOS, UNIQLO, H&M and COS UK', () => {
     expect(findRetailerAdapter(asosUrl)?.retailerSlug).toBe('asos-uk');
     expect(findRetailerAdapter(uniqloUrl)?.retailerSlug).toBe('uniqlo-uk');
+    expect(findRetailerAdapter(hmUrl)?.retailerSlug).toBe('hm-uk');
+    expect(findRetailerAdapter(cosUrl)?.retailerSlug).toBe('cos-uk');
   });
 
   it('uses one fast raw Oxylabs request for scheduled ASOS monitoring', async () => {
@@ -73,4 +135,54 @@ describe('Sprint 6 retailer registry', () => {
     expect(snapshot.inStock).toBe(true);
     expect(snapshot.canonicalUrl).toBe(asosUrl.toString());
   });
+
+  it.each([
+    {
+      label: 'H&M',
+      url: hmUrl,
+      html: hmHtml,
+      variant: { size: 'S', colour: 'Black' },
+      priceMinor: 1400,
+    },
+    {
+      label: 'COS',
+      url: cosUrl,
+      html: cosHtml,
+      variant: { size: 'XS', colour: 'White / Brown / Striped' },
+      priceMinor: 3500,
+    },
+  ])(
+    'uses Oxylabs immediately for scheduled $label monitoring',
+    async ({ url, html, variant, priceMinor }) => {
+      vi.stubEnv('OXYLABS_USERNAME', 'test-user');
+      vi.stubEnv('OXYLABS_PASSWORD', 'test-password');
+      const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          results: [{ status_code: 200, content: html }],
+        }),
+      } as Response);
+      vi.stubGlobal('fetch', fetchMock);
+
+      const snapshot = await fetchProductForDailyMonitoring(url, variant);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+        'https://realtime.oxylabs.io/v1/queries',
+      );
+      const requestBody = JSON.parse(
+        String(fetchMock.mock.calls[0]?.[1]?.body),
+      ) as Record<string, unknown>;
+      expect(requestBody).toMatchObject({
+        source: 'universal',
+        url: url.toString(),
+        geo_location: 'United Kingdom',
+        locale: 'en-GB',
+        render: 'html',
+      });
+      expect(snapshot.price.amountMinor).toBe(priceMinor);
+      expect(snapshot.inStock).toBe(true);
+    },
+  );
 });
