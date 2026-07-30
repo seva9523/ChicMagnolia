@@ -1,13 +1,27 @@
 import type { ProductVariant } from './types';
 
 function decodeHtml(value: string) {
-  return value
-    .replaceAll('&amp;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'")
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&nbsp;', ' ');
+  let decoded = value;
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = decoded
+      .replace(/&amp;/gi, '&')
+      .replace(/&pound;/gi, '£')
+      .replace(/&#x0*a3;/gi, '£')
+      .replace(/&#0*163;/g, '£')
+      .replace(/\\u00a3/gi, '£')
+      .replace(/\\u0026pound;/gi, '&pound;')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&nbsp;', ' ');
+
+    if (next === decoded) break;
+    decoded = next;
+  }
+
+  return decoded;
 }
 
 export function visiblePageText(html: string): string {
@@ -35,7 +49,8 @@ function containsToken(text: string, token: string): boolean {
 
 function optionElementContexts(html: string, token: string): string[] {
   const contexts: string[] = [];
-  const elementPattern = /<(button|li|option|div|span)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  const elementPattern =
+    /<(button|li|option|div|span)\b[^>]*>([\s\S]*?)<\/\1>/gi;
 
   for (const match of html.matchAll(elementPattern)) {
     const text = visiblePageText(match[0]);
@@ -57,7 +72,12 @@ function tokenContexts(text: string, token: string, radius: number): string[] {
 
   for (const match of text.matchAll(expression)) {
     const index = match.index ?? 0;
-    contexts.push(text.slice(Math.max(0, index - radius), Math.min(text.length, index + radius)));
+    contexts.push(
+      text.slice(
+        Math.max(0, index - radius),
+        Math.min(text.length, index + radius),
+      ),
+    );
   }
 
   return contexts;
@@ -84,8 +104,14 @@ function sizeAliases(size: string): string[] {
   return [...aliases].filter((alias) => alias.length > 0);
 }
 
-function contextsForTokens(html: string, tokens: string[], fallbackRadius: number): string[] {
-  const elementContexts = tokens.flatMap((token) => optionElementContexts(html, token));
+function contextsForTokens(
+  html: string,
+  tokens: string[],
+  fallbackRadius: number,
+): string[] {
+  const elementContexts = tokens.flatMap((token) =>
+    optionElementContexts(html, token),
+  );
   if (elementContexts.length > 0) return [...new Set(elementContexts)];
 
   const text = visiblePageText(html);
@@ -102,7 +128,9 @@ function variantContexts(html: string, variant: ProductVariant): string[] {
 
   if (sizeContexts.length > 0 && colourContexts.length > 0) {
     const colour = variant.colour!.toLowerCase();
-    const combined = sizeContexts.filter((context) => context.toLowerCase().includes(colour));
+    const combined = sizeContexts.filter((context) =>
+      context.toLowerCase().includes(colour),
+    );
     if (combined.length > 0) return combined;
   }
 
@@ -118,7 +146,13 @@ const unavailableSignals = [
   'i want it',
 ];
 
-const availableSignals = ['add to bag', 'add to basket', 'add to cart', 'in stock', 'available'];
+const availableSignals = [
+  'add to bag',
+  'add to basket',
+  'add to cart',
+  'in stock',
+  'available',
+];
 
 export function variantInStock(
   html: string,
@@ -131,29 +165,45 @@ export function variantInStock(
   if (contexts.length === 0) return defaultInStock;
 
   const normalized = contexts.map((context) => context.toLowerCase());
-  if (normalized.some((context) => unavailableSignals.some((signal) => context.includes(signal)))) {
+  if (
+    normalized.some((context) =>
+      unavailableSignals.some((signal) => context.includes(signal)),
+    )
+  ) {
     return false;
   }
-  if (normalized.some((context) => availableSignals.some((signal) => context.includes(signal)))) {
+  if (
+    normalized.some((context) =>
+      availableSignals.some((signal) => context.includes(signal)),
+    )
+  ) {
     return true;
   }
 
   return defaultInStock;
 }
 
-export function variantPriceMinor(html: string, variant: ProductVariant): number | null {
+export function variantPriceMinor(
+  html: string,
+  variant: ProductVariant,
+): number | null {
   // A variant-specific price is trustworthy only when it is printed inside the
   // selected size option itself. Colour/page-level contexts often contain prices
   // for recommendations or promotions and must not override the main product price.
   if (!variant.size) return null;
 
-  const contexts = sizeAliases(variant.size).flatMap((alias) => optionElementContexts(html, alias));
+  const contexts = sizeAliases(variant.size).flatMap((alias) =>
+    optionElementContexts(html, alias),
+  );
   const prices: number[] = [];
 
   for (const context of [...new Set(contexts)]) {
-    for (const match of context.matchAll(/£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi)) {
+    for (const match of context.matchAll(
+      /£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/gi,
+    )) {
       const amount = Number(match[1].replace(',', '.'));
-      if (Number.isFinite(amount) && amount > 0) prices.push(Math.round(amount * 100));
+      if (Number.isFinite(amount) && amount > 0)
+        prices.push(Math.round(amount * 100));
     }
   }
 

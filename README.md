@@ -12,9 +12,10 @@ The repository currently includes:
 - manual purchase tracking with purchase price, date, return deadline, size, and colour
 - returned and stopped-tracking statuses
 - on-demand current-price and stock checks
-- Zara UK, Mango UK, and Next UK retailer adapters
-- Browserless and Oxylabs fallbacks for retailer anti-bot protection
-- variant-aware stock checks
+- Zara UK, Mango UK, Next UK, ASOS UK, and UNIQLO UK retailer adapters
+- retailer-specific anti-bot fallbacks: ASOS uses one rendered UK Oxylabs request; UNIQLO and the existing adapters retain direct, Browserless, and Oxylabs routes
+- current sale-price parsing with saved size and colour variant isolation
+- ASOS `colourWayId` preservation for the exact saved colourway
 - daily monitoring through GitHub Actions
 - Resend email alerts when the saved item is cheaper, in stock, and still returnable
 - notification history and duplicate-alert protection
@@ -23,7 +24,7 @@ The repository currently includes:
 - Stripe Customer Portal billing and cancellation management
 - server-side paid-access enforcement for purchase creation, manual checks, and scheduled monitoring
 
-ASOS, Uniqlo, H&M, COS, founder operations, and beta-launch controls remain later-sprint work.
+H&M, COS, founder operations, and beta-launch controls remain later-sprint work.
 
 ## Stack
 
@@ -78,21 +79,21 @@ ASOS, Uniqlo, H&M, COS, founder operations, and beta-launch controls remain late
 
 ## Environment variables
 
-| Variable | Visibility | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | Browser | Canonical application URL |
-| `NEXT_PUBLIC_SUPABASE_URL` | Browser | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser | Supabase publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Background and privileged Supabase operations |
-| `BROWSERLESS_TOKEN` | Server only | Browserless fallback access |
-| `OXYLABS_USERNAME` | Server only | Oxylabs Web Scraper API username |
-| `OXYLABS_PASSWORD` | Server only | Oxylabs Web Scraper API password |
-| `RESEND_API_KEY` | Server only | Resend API authentication |
-| `EMAIL_FROM` | Server only | Verified sender address |
-| `CRON_SECRET` | Server only | Bearer token protecting the daily-monitoring endpoint |
-| `STRIPE_SECRET_KEY` | Server only | Stripe test or live secret |
-| `STRIPE_WEBHOOK_SECRET` | Server only | Stripe endpoint signing secret |
-| `STRIPE_PRICE_ID` | Server only | Recurring GBP monthly price for the £4.99 plan |
+| Variable                        | Visibility  | Purpose                                               |
+| ------------------------------- | ----------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_APP_URL`           | Browser     | Canonical application URL                             |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Browser     | Supabase project URL                                  |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser     | Supabase publishable key                              |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server only | Background and privileged Supabase operations         |
+| `BROWSERLESS_TOKEN`             | Server only | Browserless fallback access                           |
+| `OXYLABS_USERNAME`              | Server only | Oxylabs Web Scraper API username                      |
+| `OXYLABS_PASSWORD`              | Server only | Oxylabs Web Scraper API password                      |
+| `RESEND_API_KEY`                | Server only | Resend API authentication                             |
+| `EMAIL_FROM`                    | Server only | Verified sender address                               |
+| `CRON_SECRET`                   | Server only | Bearer token protecting the daily-monitoring endpoint |
+| `STRIPE_SECRET_KEY`             | Server only | Stripe test or live secret                            |
+| `STRIPE_WEBHOOK_SECRET`         | Server only | Stripe endpoint signing secret                        |
+| `STRIPE_PRICE_ID`               | Server only | Recurring GBP monthly price for the £4.99 plan        |
 
 Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Store
 production values in Vercel project settings.
@@ -155,7 +156,10 @@ running when either GitHub secret is missing.
 
 The endpoint checks three purchases per request to remain inside the Vercel request
 limit. The workflow runs up to 50 batches, covering up to 150 due purchases each day.
-Only users with active paid monitoring access are included.
+Only users with active paid monitoring access are included. Scheduled retailer checks
+use the fast rendered UK Oxylabs route immediately. ASOS reads the exact colourway,
+current sale price, and selected-size stock from raw page state. UNIQLO reads its current
+sale price and the selected size's hydrated strike state.
 
 An email is sent only when all of these conditions are true:
 
@@ -167,6 +171,7 @@ An email is sent only when all of these conditions are true:
 ## Quality checks
 
 ```bash
+npm run format
 npm run format:check
 npm run lint
 npm run typecheck
