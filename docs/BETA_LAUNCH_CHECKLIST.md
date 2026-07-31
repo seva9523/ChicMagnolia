@@ -31,6 +31,17 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [ ] Review Supabase Row Level Security policies from a second non-owner account.
 - [ ] Verify the service-role key is never exposed in browser bundles or public environment
       variables.
+- [ ] In Supabase Authentication → URL Configuration, set the Site URL to the canonical
+      production origin and add these allowed redirect patterns:
+  - `http://localhost:3000/**`;
+  - `https://*-seva9523s-projects.vercel.app/**`;
+  - the exact production `/auth/callback` URL for `chicmagnolia.com`,
+    `www.chicmagnolia.com` and the Vercel production alias in use.
+- [ ] Create a disposable account from a Vercel Preview URL and confirm the email link returns
+      to the same Preview origin, establishes the session and opens the dashboard without an
+      erroneous confirmation failure.
+- [ ] Request a password reset from Preview and Production and confirm each email link opens a
+      secure reset session on the same initiating origin.
 - [ ] Confirm Stripe webhook signature verification rejects an invalid signature.
 - [ ] Confirm the cron endpoint rejects missing or incorrect bearer tokens.
 - [ ] Confirm account export and dashboard routes redirect or return 401 when signed out.
