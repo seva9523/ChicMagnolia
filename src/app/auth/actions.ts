@@ -1,7 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { resolveAuthRequestOrigin } from '@/lib/auth-redirects';
+import { clientEnv } from '@/lib/env/client';
 import {
   legalAcceptanceConfirmed,
   PRIVACY_VERSION,
@@ -11,6 +14,19 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
+}
+
+async function authCallbackUrl(nextPath: string) {
+  const requestHeaders = await headers();
+  const origin = resolveAuthRequestOrigin({
+    canonicalOrigin: clientEnv.NEXT_PUBLIC_APP_URL,
+    forwardedHost: requestHeaders.get('x-forwarded-host'),
+    host: requestHeaders.get('host'),
+    forwardedProto: requestHeaders.get('x-forwarded-proto'),
+  });
+  const callback = new URL('/auth/callback', origin);
+  callback.searchParams.set('next', nextPath);
+  return callback.toString();
 }
 
 export async function signUp(formData: FormData) {
@@ -28,7 +44,7 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: await authCallbackUrl('/dashboard'),
       data: {
         full_name: fullName,
         legal_accepted: true,
@@ -62,7 +78,7 @@ export async function requestPasswordReset(formData: FormData) {
   const email = value(formData, 'email');
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
+    redirectTo: await authCallbackUrl('/reset-password'),
   });
 
   if (error) redirect(`/forgot-password?error=${encodeURIComponent(error.message)}`);
