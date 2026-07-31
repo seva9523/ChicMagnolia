@@ -10,6 +10,7 @@ const CHICMAGNOLIA_HOSTNAMES = new Set([
   'www.chicmagnolia.com',
   'chic-magnolia.vercel.app',
 ]);
+const CHICMAGNOLIA_VERCEL_SUFFIX = '-seva9523s-projects.vercel.app';
 
 function firstHeaderValue(value: string | null | undefined): string | null {
   const first = value?.split(',')[0]?.trim();
@@ -38,7 +39,7 @@ function isAllowedAuthHostname(candidate: string, canonical: string) {
     candidateHostname === canonicalHostname ||
     hostnameWithoutWww(candidateHostname) === hostnameWithoutWww(canonicalHostname) ||
     CHICMAGNOLIA_HOSTNAMES.has(candidateHostname) ||
-    candidateHostname.endsWith('.vercel.app') ||
+    candidateHostname.endsWith(CHICMAGNOLIA_VERCEL_SUFFIX) ||
     isLoopbackHostname(candidateHostname)
   );
 }
