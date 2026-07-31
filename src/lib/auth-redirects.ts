@@ -5,6 +5,12 @@ type RequestOriginInput = {
   forwardedProto?: string | null;
 };
 
+const CHICMAGNOLIA_HOSTNAMES = new Set([
+  'chicmagnolia.com',
+  'www.chicmagnolia.com',
+  'chic-magnolia.vercel.app',
+]);
+
 function firstHeaderValue(value: string | null | undefined): string | null {
   const first = value?.split(',')[0]?.trim();
   return first || null;
@@ -31,6 +37,7 @@ function isAllowedAuthHostname(candidate: string, canonical: string) {
   return (
     candidateHostname === canonicalHostname ||
     hostnameWithoutWww(candidateHostname) === hostnameWithoutWww(canonicalHostname) ||
+    CHICMAGNOLIA_HOSTNAMES.has(candidateHostname) ||
     candidateHostname.endsWith('.vercel.app') ||
     isLoopbackHostname(candidateHostname)
   );
@@ -50,12 +57,11 @@ export function resolveAuthRequestOrigin({
   const requestHost = firstHeaderValue(forwardedHost) ?? firstHeaderValue(host);
   if (!requestHost || /[\s/@\\]/.test(requestHost)) return canonical.origin;
 
-  const hostnameForProtocol = requestHost.replace(/^\[/, '').split(']')[0]?.split(':')[0] ?? '';
   const protocolHeader = firstHeaderValue(forwardedProto)?.toLowerCase();
   const protocol =
     protocolHeader === 'http' || protocolHeader === 'https'
       ? protocolHeader
-      : isLoopbackHostname(hostnameForProtocol)
+      : requestHost.startsWith('localhost:') || requestHost.startsWith('127.0.0.1:')
         ? 'http'
         : 'https';
 
