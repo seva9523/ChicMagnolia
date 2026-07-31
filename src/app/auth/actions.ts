@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { publicAuthErrorMessage, safeAuthErrorLog } from '@/lib/auth-errors';
 import { resolveAuthRequestOrigin } from '@/lib/auth-redirects';
 import { clientEnv } from '@/lib/env/client';
 import {
@@ -54,7 +55,12 @@ export async function signUp(formData: FormData) {
     },
   });
 
-  if (error) redirect(`/sign-up?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error('Supabase sign-up failed', safeAuthErrorLog(error));
+    redirect(
+      `/sign-up?error=${encodeURIComponent(publicAuthErrorMessage(error, 'sign-up'))}`,
+    );
+  }
   redirect('/sign-up?message=Check your email to confirm your account.');
 }
 
@@ -64,7 +70,12 @@ export async function signIn(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error('Supabase sign-in failed', safeAuthErrorLog(error));
+    redirect(
+      `/login?error=${encodeURIComponent(publicAuthErrorMessage(error, 'sign-in'))}`,
+    );
+  }
   redirect('/dashboard');
 }
 
@@ -81,7 +92,12 @@ export async function requestPasswordReset(formData: FormData) {
     redirectTo: await authCallbackUrl('/reset-password'),
   });
 
-  if (error) redirect(`/forgot-password?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error('Supabase password reset request failed', safeAuthErrorLog(error));
+    redirect(
+      `/forgot-password?error=${encodeURIComponent(publicAuthErrorMessage(error, 'password-reset'))}`,
+    );
+  }
   redirect('/forgot-password?message=Password reset instructions have been sent.');
 }
 
@@ -90,6 +106,11 @@ export async function updatePassword(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({ password });
 
-  if (error) redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    console.error('Supabase password update failed', safeAuthErrorLog(error));
+    redirect(
+      `/reset-password?error=${encodeURIComponent(publicAuthErrorMessage(error, 'password-update'))}`,
+    );
+  }
   redirect('/dashboard?message=Password updated successfully.');
 }
