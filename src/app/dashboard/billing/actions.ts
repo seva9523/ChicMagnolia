@@ -1,8 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { getStripeClient } from '@/integrations/stripe';
+import { resolveAuthRequestOrigin } from '@/lib/auth-redirects';
 import { clientEnv } from '@/lib/env/client';
 import { serverEnv } from '@/lib/env/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -15,6 +17,16 @@ import { buildCheckoutSessionParams } from '@/services/stripe-billing';
 
 function billingRedirect(message: string): never {
   redirect(`/dashboard/billing?message=${encodeURIComponent(message)}`);
+}
+
+async function billingReturnOrigin() {
+  const requestHeaders = await headers();
+  return resolveAuthRequestOrigin({
+    canonicalOrigin: clientEnv.NEXT_PUBLIC_APP_URL,
+    forwardedHost: requestHeaders.get('x-forwarded-host'),
+    host: requestHeaders.get('host'),
+    forwardedProto: requestHeaders.get('x-forwarded-proto'),
+  });
 }
 
 export async function startSubscriptionCheckout() {
@@ -38,7 +50,9 @@ export async function startSubscriptionCheckout() {
   }
 
   if (!canStartCheckout(subscription)) {
-    billingRedirect('Use Manage billing to update the subscription already linked to this account.');
+    billingRedirect(
+      'Use Manage billing to update the subscription already linked to this account.',
+    );
   }
 
   const stripe = getStripeClient();
@@ -79,7 +93,7 @@ export async function startSubscriptionCheckout() {
         userId: user.id,
         customerId,
         priceId: serverEnv.STRIPE_PRICE_ID,
-        appUrl: clientEnv.NEXT_PUBLIC_APP_URL,
+        appUrl: await billingReturnOrigin(),
       }),
       {
         idempotencyKey: `chicmagnolia-checkout-${user.id}-${serverEnv.STRIPE_PRICE_ID}-${minuteBucket}`,
@@ -114,9 +128,10 @@ export async function openCustomerPortal() {
 
   let portalUrl: string | null = null;
   try {
+    const returnOrigin = await billingReturnOrigin();
     const session = await getStripeClient().billingPortal.sessions.create({
       customer: customerId,
-      return_url: new URL('/dashboard/billing', clientEnv.NEXT_PUBLIC_APP_URL).toString(),
+      return_url: new URL('/dashboard/billing', returnOrigin).toString(),
     });
     portalUrl = session.url;
   } catch {
