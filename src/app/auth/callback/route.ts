@@ -14,6 +14,15 @@ function redirectWithMessage(
   return NextResponse.redirect(target);
 }
 
+function isPkceVerifierFailure(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const code = 'code' in error ? String(error.code) : '';
+  return (
+    code === 'bad_code_verifier' ||
+    /code verifier|both auth code and code verifier/i.test(error.message)
+  );
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -44,10 +53,19 @@ export async function GET(request: Request) {
     );
   }
 
+  if (isPkceVerifierFailure(error)) {
+    return redirectWithMessage(
+      url.origin,
+      '/login',
+      'message',
+      'Your email was confirmed, but automatic sign-in could not be completed. Please sign in.',
+    );
+  }
+
   return redirectWithMessage(
     url.origin,
     '/login',
-    'message',
-    'Your email was confirmed, but automatic sign-in could not be completed. Please sign in.',
+    'error',
+    'This confirmation link could not be completed. It may be invalid or expired.',
   );
 }
