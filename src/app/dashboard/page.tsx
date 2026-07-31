@@ -2,7 +2,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { signOut } from '@/app/auth/actions';
-import { checkCurrentPrice, updatePurchaseStatus } from '@/app/dashboard/purchases/actions';
+import {
+  checkCurrentPrice,
+  updatePurchaseStatus,
+} from '@/app/dashboard/purchases/actions';
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -29,7 +32,10 @@ type Purchase = {
   status: 'tracking' | 'returned' | 'stopped';
 };
 
-const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
+const money = new Intl.NumberFormat('en-GB', {
+  style: 'currency',
+  currency: 'GBP',
+});
 const date = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -63,7 +69,10 @@ export default async function DashboardPage({
       .order('created_at', { ascending: false }),
     getUserSubscription(supabase, user.id)
       .then((subscription) => ({ subscription, error: null as string | null }))
-      .catch(() => ({ subscription: null, error: 'Billing status could not be loaded.' })),
+      .catch(() => ({
+        subscription: null,
+        error: 'Billing status could not be loaded.',
+      })),
   ]);
 
   const params = await searchParams;
@@ -71,7 +80,9 @@ export default async function DashboardPage({
   const rows = (purchases ?? []) as Purchase[];
   const activeCount = rows.filter((purchase) => purchase.status === 'tracking').length;
   const potentialSavingsPence = rows.reduce((total, purchase) => {
-    if (purchase.status !== 'tracking' || purchase.current_price_pence === null) return total;
+    if (purchase.status !== 'tracking' || purchase.current_price_pence === null) {
+      return total;
+    }
     return total + Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence);
   }, 0);
   const subscription = subscriptionResult.subscription;
@@ -80,14 +91,17 @@ export default async function DashboardPage({
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-10">
-      <header className="mx-auto flex max-w-6xl items-center justify-between border-b pb-6">
+      <header className="mx-auto flex max-w-6xl flex-col justify-between gap-4 border-b pb-6 sm:flex-row sm:items-center">
         <div>
           <p className="text-primary text-sm font-semibold">ChicMagnolia</p>
           <p className="text-muted-foreground text-sm">Post-purchase savings assistant</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline">
             <Link href="/dashboard/billing">Billing</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/settings">Settings</Link>
           </Button>
           <form action={signOut}>
             <Button variant="outline" type="submit">
@@ -141,9 +155,14 @@ export default async function DashboardPage({
                 : 'Existing data remains readable. Subscribe or resolve billing to restart monitoring.'}
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/billing">View billing</Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="outline">
+              <Link href="/dashboard/billing">View billing</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/settings">Account and privacy</Link>
+            </Button>
+          </div>
         </div>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
@@ -179,14 +198,19 @@ export default async function DashboardPage({
               const savings =
                 purchase.current_price_pence === null
                   ? 0
-                  : Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence);
+                  : Math.max(
+                      0,
+                      purchase.purchase_price_pence - purchase.current_price_pence,
+                    );
 
               return (
                 <article key={purchase.id} className="rounded-3xl border bg-card p-6 shadow-sm">
                   <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-primary">{purchase.retailer_name}</p>
+                        <p className="text-sm font-semibold text-primary">
+                          {purchase.retailer_name}
+                        </p>
                         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium capitalize">
                           {purchase.status}
                         </span>
@@ -198,8 +222,9 @@ export default async function DashboardPage({
                       </div>
                       <h2 className="mt-2 text-xl font-semibold">{purchase.product_name}</h2>
                       <p className="text-muted-foreground mt-2 text-sm">
-                        Purchased {date.format(new Date(`${purchase.purchase_date}T00:00:00Z`))} ·
-                        Return by {date.format(new Date(`${purchase.return_deadline}T00:00:00Z`))}
+                        Purchased{' '}
+                        {date.format(new Date(`${purchase.purchase_date}T00:00:00Z`))} · Return
+                        by {date.format(new Date(`${purchase.return_deadline}T00:00:00Z`))}
                       </p>
                       {purchase.size || purchase.colour ? (
                         <p className="text-muted-foreground mt-1 text-sm">

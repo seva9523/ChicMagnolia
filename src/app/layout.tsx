@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/next';
+
+import { PrivacySafeAnalytics } from '@/components/privacy-safe-analytics';
+import { clientEnv } from '@/lib/env/client';
 
 import './globals.css';
 
@@ -15,7 +17,11 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'ChicMagnolia',
+  metadataBase: new URL(clientEnv.NEXT_PUBLIC_APP_URL),
+  title: {
+    default: 'ChicMagnolia',
+    template: '%s | ChicMagnolia',
+  },
   description: 'Never miss a price drop within your return window.',
 };
 
@@ -28,7 +34,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable}`}>
         {children}
-        <Analytics />
+        <PrivacySafeAnalytics />
       </body>
     </html>
   );

@@ -28,8 +28,15 @@ The repository currently includes:
 - Stripe Customer Portal billing and cancellation management
 - server-side paid-access enforcement for purchase creation, manual checks, and scheduled
   monitoring
+- public Privacy notice and Terms of service with versioned sign-up acknowledgement
+- authenticated JSON account export without card data or internal Stripe identifiers
+- self-service account deletion with immediate linked Stripe-customer deletion
+- deletion-safe Stripe webhook processing that does not recreate removed users
+- security headers, private-route robots rules and a public sitemap
+- database privacy regression tests and a private beta launch checklist
 
-Founder operations and beta-launch controls remain later-sprint work.
+Stripe remains in sandbox/test mode. Live-mode activation, final legal-entity details and
+public acquisition are manual launch decisions rather than automatic code changes.
 
 ## Stack
 
@@ -51,6 +58,8 @@ Founder operations and beta-launch controls remain later-sprint work.
 - an Oxylabs Web Scraper API account
 - a verified Resend sender or domain
 - a Stripe account with test and live products
+- a monitored `support@chicmagnolia.com` mailbox or forwarding rule before inviting beta
+  users
 
 ## Local setup
 
@@ -103,6 +112,43 @@ Founder operations and beta-launch controls remain later-sprint work.
 Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Store
 production values in Vercel project settings.
 
+## Privacy and account lifecycle setup
+
+Apply:
+
+```text
+supabase/migrations/202607310001_create_legal_acceptances.sql
+```
+
+The migration creates a read-only-to-users legal acceptance audit table and updates the
+trusted new-user trigger. New sign-ups must tick the Terms and Privacy acknowledgement;
+the trigger records the policy versions and server timestamp. Existing beta accounts can
+continue to use the service, but the final public launch process should decide whether they
+must accept a later version.
+
+Authenticated users can open `/dashboard/settings` to:
+
+- review account details and legal links;
+- download a JSON export of user-owned application data;
+- permanently delete the account.
+
+Account export uses the signed-in Supabase client and Row Level Security. It includes
+profile, legal acceptance, purchase, price-check, notification and non-sensitive
+subscription state. It intentionally excludes card data, Stripe customer and subscription
+IDs, price IDs and webhook internals.
+
+Account deletion requires the authenticated email address. If a Stripe customer is linked,
+ChicMagnolia first deletes the Stripe customer, immediately ending active subscriptions and
+preventing future use of saved payment details. It then deletes the Supabase auth user;
+foreign-key cascades remove the profile, purchases, price checks, notifications,
+subscription state and legal acceptances. Stripe webhooks arriving after deletion are
+acknowledged without recreating the user.
+
+The public legal copy uses `support@chicmagnolia.com`. Create or forward that mailbox before
+inviting beta users. Replace the operator/controller description when the final legal entity
+or sole-trader disclosure is confirmed. Review the legal copy with a qualified UK adviser
+before public live billing.
+
 ## Stripe subscription setup
 
 ChicMagnolia deliberately has one MVP plan: £4.99 GBP every month. Do not add coupons,
@@ -135,8 +181,8 @@ annual billing, or additional tiers.
 5. Store the endpoint signing secret as `STRIPE_WEBHOOK_SECRET` and redeploy.
 6. Activate and configure the Stripe Customer Portal to allow payment-method updates,
    invoice history, and cancellation at period end.
-7. Repeat the product, price, webhook, and environment configuration in live mode before
-   the paid beta. Never mix test IDs with live keys.
+7. Repeat the product, price, webhook and environment configuration in live mode only after
+   the beta launch checklist is complete. Never mix test IDs with live keys.
 
 The signed webhook is authoritative. Returning from Checkout only shows a pending
 message and never grants access by itself. Active and trialing users can monitor.
@@ -183,6 +229,31 @@ An email is sent only when all of these conditions are true:
 - the return deadline has not passed
 - the same purchase and current price have not already produced a successful alert
 
+## Security and privacy controls
+
+- user-owned tables use Supabase Row Level Security;
+- server secrets remain in server-only environment variables;
+- Stripe webhooks use the raw body and signature verification;
+- account export is authenticated and marked `private, no-store`;
+- analytics query strings and fragments are removed before transmission;
+- Vercel Web Analytics is used for aggregated, cookie-free product analytics;
+- security headers deny framing, MIME sniffing, camera, microphone and geolocation access;
+- private dashboard, API and authentication routes are excluded from crawler indexing;
+- `SECURITY.md` documents private vulnerability reporting.
+
+The security controls reduce common risks but do not replace periodic review, dependency
+updates, provider configuration and live RLS testing with separate accounts.
+
+## Private beta launch
+
+Use [`docs/BETA_LAUNCH_CHECKLIST.md`](docs/BETA_LAUNCH_CHECKLIST.md) before inviting users.
+The checklist covers legal identity, support email, legal acceptance migration, account
+export and deletion, Stripe test-mode verification, RLS, secrets, email delivery, retailer
+smoke tests, monitoring spend, rollback and the first beta cohort.
+
+Do not enable Stripe live mode or business verification as part of routine deployment.
+Those are explicit founder decisions after the checklist and legal review are complete.
+
 ## Quality checks
 
 ```bash
@@ -194,19 +265,21 @@ npm test
 npm run build
 ```
 
-The CI workflow runs formatting, linting, type checking, tests, and a production build
-for pull requests and pushes to `main`.
+The CI workflow runs formatting, linting, type checking, tests and a production build for
+pull requests and pushes to `main`.
 
 ## Project structure
 
 ```text
 .github/workflows/       CI and daily scheduler
-src/app/                 App Router pages, actions, and route handlers
+docs/                    Operational and beta-launch checklists
+src/app/                 App Router pages, actions and route handlers
 src/components/ui/       shadcn/ui components
 src/integrations/        Stripe and Resend clients
 src/lib/env/             Runtime environment validation
-src/lib/supabase/        Browser, session, and admin Supabase clients
+src/lib/supabase/        Browser, session and admin Supabase clients
 src/retailers/           Retailer adapters and variant parsers
-src/services/            Monitoring, billing, and alert business logic
+src/security/            Static database privacy regression tests
+src/services/            Monitoring, billing, export and account lifecycle logic
 supabase/migrations/     PostgreSQL schema changes
 ```

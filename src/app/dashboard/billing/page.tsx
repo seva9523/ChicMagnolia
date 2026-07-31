@@ -56,16 +56,22 @@ export default async function BillingPage({
   return (
     <main className="min-h-screen px-6 py-8 sm:px-10">
       <div className="mx-auto max-w-4xl">
-        <Link className="text-muted-foreground text-sm hover:underline" href="/dashboard">
-          ← Back to dashboard
-        </Link>
+        <nav className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <Link className="text-muted-foreground hover:underline" href="/dashboard">
+            ← Back to dashboard
+          </Link>
+          <Link className="text-muted-foreground hover:underline" href="/dashboard/settings">
+            Account and privacy settings
+          </Link>
+        </nav>
 
         <div className="mt-6 rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
           <p className="text-primary text-sm font-semibold">ChicMagnolia billing</p>
           <h1 className="mt-2 text-3xl font-semibold">One simple monthly plan</h1>
           <p className="text-muted-foreground mt-3 max-w-2xl">
-            Track up to 10 active purchases, receive one variant-aware price check per day and get
-            an email when a cheaper in-stock price is still actionable within the return window.
+            Track up to 10 active purchases, receive one variant-aware price check per day and
+            get an email when a cheaper in-stock price is still actionable within the return
+            window.
           </p>
 
           {params.message ? (
@@ -85,8 +91,8 @@ export default async function BillingPage({
                 <span className="text-muted-foreground">per month</span>
               </div>
               <p className="text-muted-foreground mt-3 text-sm">
-                Monthly GBP subscription. No annual plan, coupon or additional tier is included in
-                the MVP.
+                Monthly GBP subscription. No annual plan, coupon or additional tier is included
+                in the MVP.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -120,17 +126,22 @@ export default async function BillingPage({
               ) : null}
               {subscription?.status === 'past_due' || subscription?.status === 'unpaid' ? (
                 <p className="mt-3 text-sm text-red-700">
-                  Open Manage billing to update the payment method. Monitoring resumes after Stripe
-                  confirms an active subscription through the webhook.
+                  Open Manage billing to update the payment method. Monitoring resumes after
+                  Stripe confirms an active subscription through the webhook.
                 </p>
               ) : null}
             </section>
           </div>
 
           <p className="text-muted-foreground mt-8 text-sm">
-            Payments, invoices, payment-method updates and cancellation are handled on Stripe-hosted
-            pages. Returning from Stripe does not itself grant access; signed webhook state is the
-            source of truth.
+            Payments, invoices, payment-method updates and cancellation are handled on
+            Stripe-hosted pages. Returning from Stripe does not itself grant access; signed
+            webhook state is the source of truth. The recurring plan and cancellation rules are
+            explained in the{' '}
+            <Link className="font-medium text-primary underline" href="/terms">
+              Terms of service
+            </Link>
+            .
           </p>
         </div>
       </div>
