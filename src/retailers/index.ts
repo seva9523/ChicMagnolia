@@ -7,6 +7,8 @@ export type {
 } from './types';
 
 export { asosAdapter } from './asos';
+export { cosAdapter } from './cos';
+export { hmAdapter } from './hm';
 export { mangoAdapter } from './mango';
 export { nextAdapter } from './next';
 export { uniqloAdapter } from './uniqlo';
@@ -17,6 +19,8 @@ import {
   fetchAsosProductInteractive,
   fetchAsosProductViaOxylabs,
 } from './asos-oxylabs';
+import { cosAdapter, parseCosProductHtml } from './cos';
+import { hmAdapter, parseHmProductHtml } from './hm';
 import { mangoAdapter } from './mango';
 import { parseMangoOxylabsHtml } from './mango-oxylabs';
 import { nextAdapter, parseNextProductHtml } from './next';
@@ -56,6 +60,8 @@ const retailerConfigurations: readonly RetailerConfiguration[] = [
     fetchScheduled: fetchAsosProductViaOxylabs,
   },
   { adapter: uniqloAdapter, parseProductHtml: parseUniqloProductHtml },
+  { adapter: cosAdapter, parseProductHtml: parseCosProductHtml },
+  { adapter: hmAdapter, parseProductHtml: parseHmProductHtml },
   { adapter: nextAdapter, parseProductHtml: parseNextProductHtml },
   { adapter: mangoAdapter, parseProductHtml: parseMangoOxylabsHtml },
   { adapter: zaraAdapter, parseProductHtml: parseZaraOxylabsHtml },
