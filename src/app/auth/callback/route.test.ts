@@ -51,6 +51,19 @@ describe('auth callback', () => {
     expect(target.searchParams.get('message')).toMatch(/email was confirmed/i);
   });
 
+  it('reports a genuinely invalid or expired confirmation code as an error', async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: new Error('flow state expired') });
+
+    const response = await GET(
+      new Request(`${origin}/auth/callback?code=expired&next=%2Fdashboard`),
+    );
+    const target = location(response);
+
+    expect(target.pathname).toBe('/login');
+    expect(target.searchParams.get('message')).toBeNull();
+    expect(target.searchParams.get('error')).toMatch(/invalid or expired/i);
+  });
+
   it('requires a fresh recovery link when the reset session cannot be opened', async () => {
     exchangeCodeForSession.mockResolvedValue({ error: new Error('bad code verifier') });
 
