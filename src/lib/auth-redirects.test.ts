@@ -38,14 +38,16 @@ describe('resolveAuthRequestOrigin', () => {
     ).toBe('http://localhost:3000');
   });
 
-  it('falls back to the canonical origin for an untrusted Host header', () => {
-    expect(
-      resolveAuthRequestOrigin({
-        canonicalOrigin,
-        forwardedHost: 'attacker.example',
-        forwardedProto: 'https',
-      }),
-    ).toBe(canonicalOrigin);
+  it('falls back to the canonical origin for untrusted hosts', () => {
+    for (const forwardedHost of ['attacker.example', 'attacker-project.vercel.app']) {
+      expect(
+        resolveAuthRequestOrigin({
+          canonicalOrigin,
+          forwardedHost,
+          forwardedProto: 'https',
+        }),
+      ).toBe(canonicalOrigin);
+    }
   });
 
   it('falls back when a non-local origin requests insecure HTTP', () => {
