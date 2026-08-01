@@ -7,15 +7,15 @@ import {
 
 describe('account lifecycle safeguards', () => {
   it('requires the authenticated account email before deletion', () => {
-    expect(accountDeletionConfirmed('shopper@example.com', 'shopper@example.com')).toBe(
-      true,
-    );
-    expect(accountDeletionConfirmed(' SHOPPER@example.com ', 'shopper@example.com')).toBe(
-      true,
-    );
-    expect(accountDeletionConfirmed('other@example.com', 'shopper@example.com')).toBe(
-      false,
-    );
+    expect(
+      accountDeletionConfirmed('shopper@example.com', 'shopper@example.com'),
+    ).toBe(true);
+    expect(
+      accountDeletionConfirmed(' SHOPPER@example.com ', 'shopper@example.com'),
+    ).toBe(true);
+    expect(
+      accountDeletionConfirmed('other@example.com', 'shopper@example.com'),
+    ).toBe(false);
     expect(accountDeletionConfirmed('', null)).toBe(false);
   });
 

@@ -15,8 +15,14 @@ export function buildCheckoutSessionParams({
   priceId,
   appUrl,
 }: CheckoutSessionInput): Stripe.Checkout.SessionCreateParams {
-  const successUrl = new URL('/dashboard/billing?checkout=success', appUrl).toString();
-  const cancelUrl = new URL('/dashboard/billing?checkout=cancelled', appUrl).toString();
+  const successUrl = new URL(
+    '/dashboard/billing?checkout=success',
+    appUrl,
+  ).toString();
+  const cancelUrl = new URL(
+    '/dashboard/billing?checkout=cancelled',
+    appUrl,
+  ).toString();
 
   return {
     mode: 'subscription',
@@ -41,7 +47,10 @@ export function stripeObjectId(value: unknown): string | null {
   return null;
 }
 
-function numericField(record: Record<string, unknown>, key: string): number | null {
+function numericField(
+  record: Record<string, unknown>,
+  key: string,
+): number | null {
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -53,7 +62,8 @@ function unixToIso(value: number | null): string | null {
 
 function subscriptionPeriod(subscription: Stripe.Subscription) {
   const raw = subscription as unknown as Record<string, unknown>;
-  const firstItem = subscription.items.data[0] as unknown as Record<string, unknown> | undefined;
+  const firstItem = subscription.items.data[0] as unknown as
+    Record<string, unknown> | undefined;
 
   return {
     start: unixToIso(
@@ -105,11 +115,15 @@ export function buildSubscriptionSync(
   };
 }
 
-export function checkoutSessionUserId(session: Stripe.Checkout.Session): string | null {
+export function checkoutSessionUserId(
+  session: Stripe.Checkout.Session,
+): string | null {
   return session.client_reference_id ?? session.metadata?.user_id ?? null;
 }
 
-export function subscriptionMetadataUserId(subscription: Stripe.Subscription): string | null {
+export function subscriptionMetadataUserId(
+  subscription: Stripe.Subscription,
+): string | null {
   return subscription.metadata.user_id ?? null;
 }
 

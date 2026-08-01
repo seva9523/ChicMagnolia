@@ -8,9 +8,7 @@ const asosUrl = new URL(
 const uniqloUrl = new URL(
   'https://www.uniqlo.com/uk/en/products/E479407-000/00?colorDisplayCode=08&sizeDisplayCode=004',
 );
-const hmUrl = new URL(
-  'https://www2.hm.com/en_gb/productpage.1265326001.html',
-);
+const hmUrl = new URL('https://www2.hm.com/en_gb/productpage.1265326001.html');
 const cosUrl = new URL(
   'https://www.cos.com/en-gb/women/womenswear/tshirts/regular/product/crew-neck-linen-t-shirt-white-brown-striped-1326337004',
 );

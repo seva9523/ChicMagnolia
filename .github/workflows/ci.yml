@@ -31,12 +31,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Format sources
-        run: npm run format
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Verify formatting
         run: npm run format:check

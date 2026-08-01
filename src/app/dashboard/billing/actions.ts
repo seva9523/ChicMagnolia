@@ -39,8 +39,10 @@ export async function startSubscriptionCheckout() {
   if (!user.email_confirmed_at) {
     billingRedirect('Confirm your email before starting a subscription.');
   }
-  if (!user.email) billingRedirect('Your account does not have a billing email.');
-  if (!serverEnv.STRIPE_PRICE_ID) billingRedirect('Stripe pricing is not configured yet.');
+  if (!user.email)
+    billingRedirect('Your account does not have a billing email.');
+  if (!serverEnv.STRIPE_PRICE_ID)
+    billingRedirect('Stripe pricing is not configured yet.');
 
   let subscription;
   try {
@@ -81,7 +83,9 @@ export async function startSubscriptionCheckout() {
       );
       if (error) throw new Error(error.message);
     } catch {
-      billingRedirect('We could not create your Stripe customer. Please try again.');
+      billingRedirect(
+        'We could not create your Stripe customer. Please try again.',
+      );
     }
   }
 
@@ -104,7 +108,8 @@ export async function startSubscriptionCheckout() {
     billingRedirect('We could not start Stripe Checkout. Please try again.');
   }
 
-  if (!checkoutUrl) billingRedirect('Stripe Checkout did not return a payment URL.');
+  if (!checkoutUrl)
+    billingRedirect('Stripe Checkout did not return a payment URL.');
   redirect(checkoutUrl);
 }
 

@@ -7,7 +7,10 @@ import { clientEnv } from '@/lib/env/client';
 import { serverEnv } from '@/lib/env/server';
 import { fetchProductForDailyMonitoring, retailerAdapters } from '@/retailers';
 import type { RetailerProductSnapshot } from '@/retailers/types';
-import { buildPriceDropEmail, isPriceDropAlertEligible } from '@/services/price-alerts';
+import {
+  buildPriceDropEmail,
+  isPriceDropAlertEligible,
+} from '@/services/price-alerts';
 
 export type TrackedPurchaseForCheck = {
   id: string;
@@ -72,7 +75,8 @@ export async function performPriceCheck(
   mode: PriceCheckMode = 'interactive',
 ): Promise<PriceCheckOutcome> {
   try {
-    if (purchase.status !== 'tracking') throw new Error('Only active purchases can be checked.');
+    if (purchase.status !== 'tracking')
+      throw new Error('Only active purchases can be checked.');
 
     const url = new URL(purchase.product_url);
     const variant = {
@@ -84,8 +88,11 @@ export async function performPriceCheck(
       mode === 'daily'
         ? await fetchProductForDailyMonitoring(url, variant)
         : await (async () => {
-            const adapter = retailerAdapters.find((candidate) => candidate.supports(url));
-            if (!adapter) throw new Error('This retailer is not supported yet.');
+            const adapter = retailerAdapters.find((candidate) =>
+              candidate.supports(url),
+            );
+            if (!adapter)
+              throw new Error('This retailer is not supported yet.');
             return adapter.fetchProduct(url, variant);
           })();
 
@@ -142,13 +149,17 @@ async function sendPriceDropAlert(
     if (existingError) throw new Error(existingError.message);
     if (existing) return 'duplicate';
 
-    if (!serverEnv.EMAIL_FROM) throw new Error('Email sender is not configured.');
+    if (!serverEnv.EMAIL_FROM)
+      throw new Error('Email sender is not configured.');
 
     const email = buildPriceDropEmail({
       retailerName: purchase.retailer_name,
       productName: purchase.product_name,
       productUrl: purchase.product_url,
-      dashboardUrl: new URL('/dashboard', clientEnv.NEXT_PUBLIC_APP_URL).toString(),
+      dashboardUrl: new URL(
+        '/dashboard',
+        clientEnv.NEXT_PUBLIC_APP_URL,
+      ).toString(),
       purchasePricePence: purchase.purchase_price_pence,
       currentPricePence,
       currency: snapshot.price.currency,
@@ -166,20 +177,23 @@ async function sendPriceDropAlert(
     });
     if (error) throw new Error(error.message);
 
-    const { error: historyError } = await supabase.from('notification_history').insert({
-      purchase_id: purchase.id,
-      user_id: purchase.user_id,
-      notification_type: 'price_drop',
-      channel: 'email',
-      status: 'sent',
-      purchase_price_pence: purchase.purchase_price_pence,
-      current_price_pence: currentPricePence,
-      savings_pence: savingsPence,
-      provider_message_id: data?.id ?? null,
-      error_message: null,
-      sent_at: new Date().toISOString(),
-    });
-    if (historyError && historyError.code !== '23505') throw new Error(historyError.message);
+    const { error: historyError } = await supabase
+      .from('notification_history')
+      .insert({
+        purchase_id: purchase.id,
+        user_id: purchase.user_id,
+        notification_type: 'price_drop',
+        channel: 'email',
+        status: 'sent',
+        purchase_price_pence: purchase.purchase_price_pence,
+        current_price_pence: currentPricePence,
+        savings_pence: savingsPence,
+        provider_message_id: data?.id ?? null,
+        error_message: null,
+        sent_at: new Date().toISOString(),
+      });
+    if (historyError && historyError.code !== '23505')
+      throw new Error(historyError.message);
 
     return historyError?.code === '23505' ? 'duplicate' : 'sent';
   } catch (error) {
@@ -210,7 +224,8 @@ export async function monitorTrackedPurchase(
   now = new Date(),
 ): Promise<MonitoredPurchaseOutcome> {
   const check = await performPriceCheck(supabase, purchase, 'daily');
-  if (!check.ok) return { check: 'failed', alert: 'not_eligible', error: check.error };
+  if (!check.ok)
+    return { check: 'failed', alert: 'not_eligible', error: check.error };
 
   if (!userEmail) return { check: 'succeeded', alert: 'missing_email' };
   if (check.snapshot.price.currency !== purchase.currency) {
@@ -229,6 +244,11 @@ export async function monitorTrackedPurchase(
   );
   if (!eligible) return { check: 'succeeded', alert: 'not_eligible' };
 
-  const alert = await sendPriceDropAlert(supabase, purchase, check.snapshot, userEmail);
+  const alert = await sendPriceDropAlert(
+    supabase,
+    purchase,
+    check.snapshot,
+    userEmail,
+  );
   return { check: 'succeeded', alert };
 }

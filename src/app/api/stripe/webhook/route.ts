@@ -19,21 +19,25 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Stripe webhook processing failed.';
+  return error instanceof Error
+    ? error.message
+    : 'Stripe webhook processing failed.';
 }
 
 async function claimEvent(
   supabase: SupabaseClient,
   event: Stripe.Event,
 ): Promise<'process' | 'duplicate' | 'in_progress'> {
-  const { error: insertError } = await supabase.from('stripe_webhook_events').insert({
-    stripe_event_id: event.id,
-    event_type: event.type,
-    event_created: event.created,
-    processing_status: 'processing',
-    error_message: null,
-    processed_at: null,
-  });
+  const { error: insertError } = await supabase
+    .from('stripe_webhook_events')
+    .insert({
+      stripe_event_id: event.id,
+      event_type: event.type,
+      event_created: event.created,
+      processing_status: 'processing',
+      error_message: null,
+      processed_at: null,
+    });
 
   if (!insertError) return 'process';
   if (insertError.code !== '23505') throw new Error(insertError.message);
@@ -80,7 +84,11 @@ async function markEventProcessed(supabase: SupabaseClient, eventId: string) {
   if (error) throw new Error(error.message);
 }
 
-async function markEventFailed(supabase: SupabaseClient, eventId: string, message: string) {
+async function markEventFailed(
+  supabase: SupabaseClient,
+  eventId: string,
+  message: string,
+) {
   await supabase
     .from('stripe_webhook_events')
     .update({
@@ -165,7 +173,8 @@ async function mappedUserId(
       .eq('stripe_customer_id', customerId)
       .maybeSingle();
     if (customerError) throw new Error(customerError.message);
-    if (byCustomer?.user_id) return existingUserId(supabase, byCustomer.user_id);
+    if (byCustomer?.user_id)
+      return existingUserId(supabase, byCustomer.user_id);
   }
 
   return null;
@@ -186,7 +195,10 @@ async function syncSubscription(
   if (error) throw new Error(error.message);
 }
 
-async function retrieveSubscriptionIfPresent(stripe: Stripe, subscriptionId: string) {
+async function retrieveSubscriptionIfPresent(
+  stripe: Stripe,
+  subscriptionId: string,
+) {
   try {
     return await stripe.subscriptions.retrieve(subscriptionId);
   } catch (error) {
@@ -202,7 +214,10 @@ async function processEvent(
 ) {
   switch (event.type) {
     case 'checkout.session.completed':
-      await linkCheckoutCustomer(supabase, event.data.object as Stripe.Checkout.Session);
+      await linkCheckoutCustomer(
+        supabase,
+        event.data.object as Stripe.Checkout.Session,
+      );
       return;
 
     case 'customer.subscription.created':
@@ -210,22 +225,34 @@ async function processEvent(
     case 'customer.subscription.paused':
     case 'customer.subscription.resumed': {
       const eventSubscription = event.data.object as Stripe.Subscription;
-      const latest = await retrieveSubscriptionIfPresent(stripe, eventSubscription.id);
+      const latest = await retrieveSubscriptionIfPresent(
+        stripe,
+        eventSubscription.id,
+      );
       if (latest) await syncSubscription(supabase, latest, event.created);
       return;
     }
 
     case 'customer.subscription.deleted':
-      await syncSubscription(supabase, event.data.object as Stripe.Subscription, event.created);
+      await syncSubscription(
+        supabase,
+        event.data.object as Stripe.Subscription,
+        event.created,
+      );
       return;
 
     case 'invoice.paid':
     case 'invoice.payment_succeeded':
     case 'invoice.payment_failed':
     case 'invoice.payment_action_required': {
-      const subscriptionId = invoiceSubscriptionId(event.data.object as Stripe.Invoice);
+      const subscriptionId = invoiceSubscriptionId(
+        event.data.object as Stripe.Invoice,
+      );
       if (!subscriptionId) return;
-      const latest = await retrieveSubscriptionIfPresent(stripe, subscriptionId);
+      const latest = await retrieveSubscriptionIfPresent(
+        stripe,
+        subscriptionId,
+      );
       if (latest) await syncSubscription(supabase, latest, event.created);
       return;
     }
@@ -237,12 +264,18 @@ async function processEvent(
 
 export async function POST(request: Request) {
   if (!serverEnv.STRIPE_SECRET_KEY || !serverEnv.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Stripe webhooks are not configured.' }, { status: 503 });
+    return NextResponse.json(
+      { error: 'Stripe webhooks are not configured.' },
+      { status: 503 },
+    );
   }
 
   const signature = request.headers.get('stripe-signature');
   if (!signature) {
-    return NextResponse.json({ error: 'Missing Stripe signature.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing Stripe signature.' },
+      { status: 400 },
+    );
   }
 
   const payload = await request.text();
@@ -250,9 +283,17 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
-    event = verifyStripeEvent(stripe, payload, signature, serverEnv.STRIPE_WEBHOOK_SECRET);
+    event = verifyStripeEvent(
+      stripe,
+      payload,
+      signature,
+      serverEnv.STRIPE_WEBHOOK_SECRET,
+    );
   } catch {
-    return NextResponse.json({ error: 'Invalid Stripe signature.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid Stripe signature.' },
+      { status: 400 },
+    );
   }
 
   const supabase = createSupabaseAdminClient();
@@ -275,6 +316,9 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = errorMessage(error);
     await markEventFailed(supabase, event.id, message);
-    return NextResponse.json({ error: 'Stripe event processing failed.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Stripe event processing failed.' },
+      { status: 500 },
+    );
   }
 }

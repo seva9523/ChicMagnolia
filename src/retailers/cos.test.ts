@@ -96,7 +96,9 @@ describe('cosAdapter', () => {
       ),
     ).toBe(true);
     expect(
-      cosAdapter.supports(new URL('https://www.cos.com/en-gb/women/new-arrivals')),
+      cosAdapter.supports(
+        new URL('https://www.cos.com/en-gb/women/new-arrivals'),
+      ),
     ).toBe(false);
     expect(
       cosAdapter.supports(

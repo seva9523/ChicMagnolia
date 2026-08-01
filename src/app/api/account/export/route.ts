@@ -21,7 +21,10 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Authentication required.' },
+      { status: 401 },
+    );
   }
 
   try {

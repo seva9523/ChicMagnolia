@@ -77,7 +77,9 @@ export async function POST(request: Request) {
   }
 
   const duePurchases = (data ?? []) as TrackedPurchaseForCheck[];
-  const dueUserIds = [...new Set(duePurchases.map((purchase) => purchase.user_id))];
+  const dueUserIds = [
+    ...new Set(duePurchases.map((purchase) => purchase.user_id)),
+  ];
   const subscriptions = new Map<string, SubscriptionRecord>();
 
   if (dueUserIds.length > 0) {
@@ -90,12 +92,15 @@ export async function POST(request: Request) {
 
     if (subscriptionError) {
       return NextResponse.json(
-        { error: `Could not load subscription access: ${subscriptionError.message}` },
+        {
+          error: `Could not load subscription access: ${subscriptionError.message}`,
+        },
         { status: 500 },
       );
     }
 
-    for (const subscription of (subscriptionRows ?? []) as SubscriptionRecord[]) {
+    for (const subscription of (subscriptionRows ??
+      []) as SubscriptionRecord[]) {
       subscriptions.set(subscription.user_id, subscription);
     }
   }
@@ -125,19 +130,32 @@ export async function POST(request: Request) {
 
   const outcomes = await Promise.all(
     purchases.map((purchase) =>
-      monitorTrackedPurchase(supabase, purchase, emails.get(purchase.user_id) ?? null, now),
+      monitorTrackedPurchase(
+        supabase,
+        purchase,
+        emails.get(purchase.user_id) ?? null,
+        now,
+      ),
     ),
   );
 
   const response = {
     processed: purchases.length,
-    succeeded: outcomes.filter((outcome) => outcome.check === 'succeeded').length,
+    succeeded: outcomes.filter((outcome) => outcome.check === 'succeeded')
+      .length,
     failed: outcomes.filter((outcome) => outcome.check === 'failed').length,
     alertsSent: outcomes.filter((outcome) => outcome.alert === 'sent').length,
-    duplicateAlertsSkipped: outcomes.filter((outcome) => outcome.alert === 'duplicate').length,
-    alertsNotEligible: outcomes.filter((outcome) => outcome.alert === 'not_eligible').length,
-    missingEmail: outcomes.filter((outcome) => outcome.alert === 'missing_email').length,
-    alertFailures: outcomes.filter((outcome) => outcome.alert === 'failed').length,
+    duplicateAlertsSkipped: outcomes.filter(
+      (outcome) => outcome.alert === 'duplicate',
+    ).length,
+    alertsNotEligible: outcomes.filter(
+      (outcome) => outcome.alert === 'not_eligible',
+    ).length,
+    missingEmail: outcomes.filter(
+      (outcome) => outcome.alert === 'missing_email',
+    ).length,
+    alertFailures: outcomes.filter((outcome) => outcome.alert === 'failed')
+      .length,
     billingIneligibleSkipped: duePurchases.length - eligibleDuePurchases.length,
     remaining: Math.max(0, eligibleDuePurchases.length - purchases.length),
     checkedAt: now.toISOString(),

@@ -52,7 +52,9 @@ describe('auth callback', () => {
   });
 
   it('reports a genuinely invalid or expired confirmation code as an error', async () => {
-    exchangeCodeForSession.mockResolvedValue({ error: new Error('flow state expired') });
+    exchangeCodeForSession.mockResolvedValue({
+      error: new Error('flow state expired'),
+    });
 
     const response = await GET(
       new Request(`${origin}/auth/callback?code=expired&next=%2Fdashboard`),
@@ -65,10 +67,14 @@ describe('auth callback', () => {
   });
 
   it('requires a fresh recovery link when the reset session cannot be opened', async () => {
-    exchangeCodeForSession.mockResolvedValue({ error: new Error('bad code verifier') });
+    exchangeCodeForSession.mockResolvedValue({
+      error: new Error('bad code verifier'),
+    });
 
     const response = await GET(
-      new Request(`${origin}/auth/callback?code=recovery&next=%2Freset-password`),
+      new Request(
+        `${origin}/auth/callback?code=recovery&next=%2Freset-password`,
+      ),
     );
     const target = location(response);
 
@@ -80,7 +86,9 @@ describe('auth callback', () => {
     exchangeCodeForSession.mockResolvedValue({ error: null });
 
     const response = await GET(
-      new Request(`${origin}/auth/callback?code=valid&next=%2F%2Fattacker.example`),
+      new Request(
+        `${origin}/auth/callback?code=valid&next=%2F%2Fattacker.example`,
+      ),
     );
 
     expect(location(response).toString()).toBe(`${origin}/dashboard`);

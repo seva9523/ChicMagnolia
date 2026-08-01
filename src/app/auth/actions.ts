@@ -93,12 +93,17 @@ export async function requestPasswordReset(formData: FormData) {
   });
 
   if (error) {
-    console.error('Supabase password reset request failed', safeAuthErrorLog(error));
+    console.error(
+      'Supabase password reset request failed',
+      safeAuthErrorLog(error),
+    );
     redirect(
       `/forgot-password?error=${encodeURIComponent(publicAuthErrorMessage(error, 'password-reset'))}`,
     );
   }
-  redirect('/forgot-password?message=Password reset instructions have been sent.');
+  redirect(
+    '/forgot-password?message=Password reset instructions have been sent.',
+  );
 }
 
 export async function updatePassword(formData: FormData) {

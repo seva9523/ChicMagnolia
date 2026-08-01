@@ -37,7 +37,8 @@ function isAllowedAuthHostname(candidate: string, canonical: string) {
 
   return (
     candidateHostname === canonicalHostname ||
-    hostnameWithoutWww(candidateHostname) === hostnameWithoutWww(canonicalHostname) ||
+    hostnameWithoutWww(candidateHostname) ===
+      hostnameWithoutWww(canonicalHostname) ||
     CHICMAGNOLIA_HOSTNAMES.has(candidateHostname) ||
     candidateHostname.endsWith(CHICMAGNOLIA_VERCEL_SUFFIX) ||
     isLoopbackHostname(candidateHostname)
@@ -62,7 +63,8 @@ export function resolveAuthRequestOrigin({
   const protocol =
     protocolHeader === 'http' || protocolHeader === 'https'
       ? protocolHeader
-      : requestHost.startsWith('localhost:') || requestHost.startsWith('127.0.0.1:')
+      : requestHost.startsWith('localhost:') ||
+          requestHost.startsWith('127.0.0.1:')
         ? 'http'
         : 'https';
 
@@ -78,14 +80,16 @@ export function resolveAuthRequestOrigin({
   }
 
   if (!isLoopbackHostname(candidate.hostname)) {
-    if (candidate.protocol !== 'https:' || candidate.port) return canonical.origin;
+    if (candidate.protocol !== 'https:' || candidate.port)
+      return canonical.origin;
   }
 
   return candidate.origin;
 }
 
 export function safeAuthNextPath(value: string | null): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  if (!value || !value.startsWith('/') || value.startsWith('//'))
+    return '/dashboard';
 
   try {
     const parsed = new URL(value, 'https://chicmagnolia.invalid');

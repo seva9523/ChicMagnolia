@@ -41,7 +41,9 @@ export default async function NewPurchasePage({
   try {
     subscription = await getUserSubscription(supabase, user.id);
   } catch {
-    redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+    redirect(
+      '/dashboard/billing?message=We could not confirm your subscription access.',
+    );
   }
   if (!hasMonitoringAccess(subscription)) {
     redirect(
@@ -54,25 +56,39 @@ export default async function NewPurchasePage({
   return (
     <main className="min-h-screen px-6 py-8 sm:px-10">
       <div className="mx-auto max-w-3xl">
-        <Link className="text-muted-foreground text-sm hover:underline" href="/dashboard">
+        <Link
+          className="text-muted-foreground text-sm hover:underline"
+          href="/dashboard"
+        >
           ← Back to dashboard
         </Link>
 
-        <div className="mt-6 rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
+        <div className="bg-card mt-6 rounded-3xl border p-6 shadow-sm sm:p-10">
           <p className="text-primary text-sm font-semibold">ChicMagnolia</p>
           <h1 className="mt-2 text-3xl font-semibold">Add a purchase</h1>
           <p className="text-muted-foreground mt-3">
-            Add the details from your order confirmation so ChicMagnolia can track the item.
+            Add the details from your order confirmation so ChicMagnolia can
+            track the item.
           </p>
 
           {params.error ? (
-            <p className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">{params.error}</p>
+            <p className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+              {params.error}
+            </p>
           ) : null}
 
-          <form action={createPurchase} className="mt-8 grid gap-6 sm:grid-cols-2">
+          <form
+            action={createPurchase}
+            className="mt-8 grid gap-6 sm:grid-cols-2"
+          >
             <label className="grid gap-2 text-sm font-medium">
               Retailer
-              <select className={inputClassName} name="retailerName" required defaultValue="">
+              <select
+                className={inputClassName}
+                name="retailerName"
+                required
+                defaultValue=""
+              >
                 <option disabled value="">
                   Select a retailer
                 </option>
@@ -86,7 +102,12 @@ export default async function NewPurchasePage({
 
             <label className="grid gap-2 text-sm font-medium">
               Product name
-              <input className={inputClassName} name="productName" required maxLength={200} />
+              <input
+                className={inputClassName}
+                name="productName"
+                required
+                maxLength={200}
+              />
             </label>
 
             <label className="grid gap-2 text-sm font-medium sm:col-span-2">
@@ -114,21 +135,37 @@ export default async function NewPurchasePage({
 
             <label className="grid gap-2 text-sm font-medium">
               Purchase date
-              <input className={inputClassName} name="purchaseDate" required type="date" />
+              <input
+                className={inputClassName}
+                name="purchaseDate"
+                required
+                type="date"
+              />
             </label>
 
             <label className="grid gap-2 text-sm font-medium">
               Return deadline
-              <input className={inputClassName} name="returnDeadline" required type="date" />
+              <input
+                className={inputClassName}
+                name="returnDeadline"
+                required
+                type="date"
+              />
             </label>
 
             <label className="grid gap-2 text-sm font-medium">
-              Size <span className="text-muted-foreground font-normal">(optional)</span>
+              Size{' '}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
               <input className={inputClassName} maxLength={50} name="size" />
             </label>
 
             <label className="grid gap-2 text-sm font-medium sm:col-span-2">
-              Colour <span className="text-muted-foreground font-normal">(optional)</span>
+              Colour{' '}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
               <input className={inputClassName} maxLength={50} name="colour" />
             </label>
 

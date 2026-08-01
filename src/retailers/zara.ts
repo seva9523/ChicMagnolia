@@ -68,7 +68,9 @@ function metaContent(html: string, key: string): string | null {
 }
 
 function priceToMinorUnits(value: unknown): number {
-  const normalized = String(value).replace(/[^0-9.,]/g, '').replace(',', '.');
+  const normalized = String(value)
+    .replace(/[^0-9.,]/g, '')
+    .replace(',', '.');
   const amount = Number(normalized);
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error('Zara product price could not be parsed.');
@@ -126,7 +128,8 @@ export function parseZaraProductHtml(
       const offerRecord = offer as Record<string, unknown>;
       const availability = String(offerRecord.availability ?? '');
       const canonicalUrl = String(product.url ?? url.toString());
-      const productId = product.sku ?? product.productID ?? productIdFromUrl(url);
+      const productId =
+        product.sku ?? product.productID ?? productIdFromUrl(url);
 
       return {
         canonicalUrl,
@@ -325,12 +328,16 @@ export async function fetchBrowserlessProduct(
 
   const payload = (await response.json()) as BrowserlessProduct;
   if (!payload.price) {
-    throw new Error('Browserless could not find Zara product data in network responses.');
+    throw new Error(
+      'Browserless could not find Zara product data in network responses.',
+    );
   }
 
   return {
     canonicalUrl:
-      typeof payload.canonicalUrl === 'string' ? payload.canonicalUrl : url.toString(),
+      typeof payload.canonicalUrl === 'string'
+        ? payload.canonicalUrl
+        : url.toString(),
     retailerProductId: productId,
     title: typeof payload.title === 'string' ? payload.title : 'Zara product',
     price: {
@@ -363,12 +370,16 @@ export const zaraAdapter: RetailerAdapter = {
         return await fetchBrowserlessProduct(url, variant);
       } catch (browserlessError) {
         const directMessage =
-          directError instanceof Error ? directError.message : 'Direct Zara request failed.';
+          directError instanceof Error
+            ? directError.message
+            : 'Direct Zara request failed.';
         const browserlessMessage =
           browserlessError instanceof Error
             ? browserlessError.message
             : 'Browserless fallback failed.';
-        throw new Error(`${directMessage} Browserless fallback: ${browserlessMessage}`);
+        throw new Error(
+          `${directMessage} Browserless fallback: ${browserlessMessage}`,
+        );
       }
     }
   },

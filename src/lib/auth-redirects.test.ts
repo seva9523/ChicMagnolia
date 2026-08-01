@@ -39,7 +39,10 @@ describe('resolveAuthRequestOrigin', () => {
   });
 
   it('falls back to the canonical origin for untrusted hosts', () => {
-    for (const forwardedHost of ['attacker.example', 'attacker-project.vercel.app']) {
+    for (const forwardedHost of [
+      'attacker.example',
+      'attacker-project.vercel.app',
+    ]) {
       expect(
         resolveAuthRequestOrigin({
           canonicalOrigin,

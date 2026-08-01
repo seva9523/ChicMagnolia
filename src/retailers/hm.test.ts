@@ -100,7 +100,9 @@ describe('hmAdapter', () => {
     expect(hmAdapter.supports(productUrl)).toBe(true);
     expect(
       hmAdapter.supports(
-        new URL('https://www2.hm.com/en_gb/productpage.1265326001.html?utm_source=test'),
+        new URL(
+          'https://www2.hm.com/en_gb/productpage.1265326001.html?utm_source=test',
+        ),
       ),
     ).toBe(true);
     expect(

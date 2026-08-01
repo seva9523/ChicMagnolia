@@ -7,12 +7,18 @@ type AuthErrorDetails = {
   message: string | null;
 };
 
-function stringField(record: Record<string, unknown>, key: string): string | null {
+function stringField(
+  record: Record<string, unknown>,
+  key: string,
+): string | null {
   const value = record[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function numberField(record: Record<string, unknown>, key: string): number | null {
+function numberField(
+  record: Record<string, unknown>,
+  key: string,
+): number | null {
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -20,16 +26,21 @@ function numberField(record: Record<string, unknown>, key: string): number | nul
 function readableMessage(message: string | null) {
   if (!message) return null;
   const normalized = message.trim();
-  if (!normalized || ['{}', '[]', '[object Object]', 'null', 'undefined'].includes(normalized)) {
+  if (
+    !normalized ||
+    ['{}', '[]', '[object Object]', 'null', 'undefined'].includes(normalized)
+  ) {
     return null;
   }
   return normalized;
 }
 
 function redactMessage(message: string | null) {
-  return message
-    ?.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
-    .slice(0, 500) ?? null;
+  return (
+    message
+      ?.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
+      .slice(0, 500) ?? null
+  );
 }
 
 export function authErrorDetails(error: unknown): AuthErrorDetails {
@@ -56,7 +67,10 @@ export function safeAuthErrorLog(error: unknown) {
   return { ...details, message: redactMessage(details.message) };
 }
 
-export function publicAuthErrorMessage(error: unknown, action: AuthAction): string {
+export function publicAuthErrorMessage(
+  error: unknown,
+  action: AuthAction,
+): string {
   const { code, status, message } = authErrorDetails(error);
 
   if (code === 'email_address_invalid') return 'Enter a valid email address.';
@@ -71,13 +85,17 @@ export function publicAuthErrorMessage(error: unknown, action: AuthAction): stri
   }
 
   const safeMessage = readableMessage(message);
-  if (safeMessage && status !== 500 && code !== 'unexpected_failure') return safeMessage;
+  if (safeMessage && status !== 500 && code !== 'unexpected_failure')
+    return safeMessage;
 
   const fallback: Record<AuthAction, string> = {
-    'sign-up': 'We could not create your account or send the confirmation email. Please try again shortly.',
+    'sign-up':
+      'We could not create your account or send the confirmation email. Please try again shortly.',
     'sign-in': 'We could not sign you in. Check your details and try again.',
-    'password-reset': 'We could not send the password reset email. Please try again shortly.',
-    'password-update': 'We could not update your password. Please request a new reset link and try again.',
+    'password-reset':
+      'We could not send the password reset email. Please try again shortly.',
+    'password-update':
+      'We could not update your password. Please request a new reset link and try again.',
   };
 
   return fallback[action];

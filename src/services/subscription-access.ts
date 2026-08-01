@@ -41,8 +41,12 @@ export function hasMonitoringAccess(
   if (!subscription) return false;
 
   if (subscription.status === 'trialing') {
-    if (subscription.trial_end && !isFuture(subscription.trial_end, now)) return false;
-    if (subscription.current_period_end && !isFuture(subscription.current_period_end, now)) {
+    if (subscription.trial_end && !isFuture(subscription.trial_end, now))
+      return false;
+    if (
+      subscription.current_period_end &&
+      !isFuture(subscription.current_period_end, now)
+    ) {
       return false;
     }
     return true;
@@ -57,23 +61,32 @@ export function hasMonitoringAccess(
   return true;
 }
 
-export function canStartCheckout(subscription: SubscriptionRecord | null | undefined): boolean {
+export function canStartCheckout(
+  subscription: SubscriptionRecord | null | undefined,
+): boolean {
   if (!subscription) return true;
-  return ['inactive', 'canceled', 'incomplete_expired'].includes(subscription.status);
+  return ['inactive', 'canceled', 'incomplete_expired'].includes(
+    subscription.status,
+  );
 }
 
 export function subscriptionStatusLabel(
   subscription: SubscriptionRecord | null | undefined,
   now = new Date(),
 ): string {
-  if (!subscription || subscription.status === 'inactive') return 'Not subscribed';
+  if (!subscription || subscription.status === 'inactive')
+    return 'Not subscribed';
 
   if (subscription.status === 'trialing') {
-    return hasMonitoringAccess(subscription, now) ? 'Trial active' : 'Trial ended';
+    return hasMonitoringAccess(subscription, now)
+      ? 'Trial active'
+      : 'Trial ended';
   }
 
   if (subscription.status === 'active' && subscription.cancel_at_period_end) {
-    return hasMonitoringAccess(subscription, now) ? 'Canceling at period end' : 'Canceled';
+    return hasMonitoringAccess(subscription, now)
+      ? 'Canceling at period end'
+      : 'Canceled';
   }
 
   const labels: Record<SubscriptionStatus, string> = {

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 export const SUPPORT_EVENT_NAME = 'support.requested';
-export const SUPPORT_NOTIFICATION_CONTACT_ID = 'fe8ec9e8-c0b5-48c1-9c81-bf04dbe0f3d0';
+export const SUPPORT_NOTIFICATION_CONTACT_ID =
+  'fe8ec9e8-c0b5-48c1-9c81-bf04dbe0f3d0';
 
 export const SUPPORT_TOPICS = [
   { value: 'account_access', label: 'Account access' },
@@ -18,7 +19,11 @@ const topicValues = SUPPORT_TOPICS.map((topic) => topic.value) as [
 ];
 
 const supportRequestSchema = z.object({
-  name: z.string().trim().min(1, 'Enter your name.').max(100, 'Name is too long.'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Enter your name.')
+    .max(100, 'Name is too long.'),
   email: z
     .string()
     .trim()
@@ -51,7 +56,10 @@ export function parseSupportRequest(formData: FormData) {
 }
 
 export function supportTopicLabel(topic: SupportTopic) {
-  return SUPPORT_TOPICS.find((candidate) => candidate.value === topic)?.label ?? 'Other';
+  return (
+    SUPPORT_TOPICS.find((candidate) => candidate.value === topic)?.label ??
+    'Other'
+  );
 }
 
 export function supportNotificationPayload(input: {

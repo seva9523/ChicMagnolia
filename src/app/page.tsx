@@ -21,8 +21,8 @@ export default function Home() {
             Catch price drops before your return window closes.
           </h1>
           <p className="text-muted-foreground mt-6 max-w-xl text-lg leading-8">
-            ChicMagnolia helps UK shoppers monitor eligible purchases and act when the same
-            saved colour and size becomes cheaper.
+            ChicMagnolia helps UK shoppers monitor eligible purchases and act
+            when the same saved colour and size becomes cheaper.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -34,16 +34,26 @@ export default function Home() {
             </Button>
           </div>
 
-          <div className="mt-8 flex gap-3 rounded-2xl border bg-background p-4 text-sm">
-            <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
+          <div className="bg-background mt-8 flex gap-3 rounded-2xl border p-4 text-sm">
+            <ShieldCheck
+              aria-hidden="true"
+              className="text-primary mt-0.5 size-5 shrink-0"
+            />
             <p className="text-muted-foreground leading-6">
-              Private dashboard data is protected by account-level access controls. Users can
-              download their data or permanently delete their account from Settings. Read the{' '}
-              <Link className="font-medium text-primary underline" href="/privacy">
+              Private dashboard data is protected by account-level access
+              controls. Users can download their data or permanently delete
+              their account from Settings. Read the{' '}
+              <Link
+                className="text-primary font-medium underline"
+                href="/privacy"
+              >
                 Privacy notice
               </Link>{' '}
               and{' '}
-              <Link className="font-medium text-primary underline" href="/terms">
+              <Link
+                className="text-primary font-medium underline"
+                href="/terms"
+              >
                 Terms
               </Link>
               .

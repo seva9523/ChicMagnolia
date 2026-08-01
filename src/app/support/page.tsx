@@ -9,7 +9,8 @@ import { submitSupportRequest } from './actions';
 
 export const metadata: Metadata = {
   title: 'Support | ChicMagnolia',
-  description: 'Contact ChicMagnolia about an account, billing, retailer check or privacy request.',
+  description:
+    'Contact ChicMagnolia about an account, billing, retailer check or privacy request.',
 };
 
 export default async function SupportPage({
@@ -35,19 +36,24 @@ export default async function SupportPage({
         <div className="mt-6">
           <h1 className="text-4xl font-semibold sm:text-5xl">Support</h1>
           <p className="text-muted-foreground mt-4 max-w-2xl text-lg leading-8">
-            Send an account, billing, retailer, privacy or security question. Include the
-            product URL, saved colour and saved size when reporting a retailer check.
+            Send an account, billing, retailer, privacy or security question.
+            Include the product URL, saved colour and saved size when reporting
+            a retailer check.
           </p>
         </div>
 
         {params.error ? (
-          <p className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">{params.error}</p>
+          <p className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            {params.error}
+          </p>
         ) : null}
         {params.message ? (
-          <p className="mt-6 rounded-xl bg-secondary p-4 text-sm">{params.message}</p>
+          <p className="bg-secondary mt-6 rounded-xl p-4 text-sm">
+            {params.message}
+          </p>
         ) : null}
 
-        <section className="mt-8 rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
+        <section className="bg-card mt-8 rounded-3xl border p-6 shadow-sm sm:p-8">
           <form action={submitSupportRequest} className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block text-sm font-medium" htmlFor="name">
@@ -111,16 +117,25 @@ export default async function SupportPage({
               />
             </label>
 
-            <div aria-hidden="true" className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="absolute top-auto -left-[10000px] h-px w-px overflow-hidden"
+            >
               <label htmlFor="website">
                 Website
-                <input autoComplete="off" id="website" name="website" tabIndex={-1} />
+                <input
+                  autoComplete="off"
+                  id="website"
+                  name="website"
+                  tabIndex={-1}
+                />
               </label>
             </div>
 
             <div className="flex flex-col justify-between gap-4 border-t pt-5 sm:flex-row sm:items-center">
               <p className="text-muted-foreground max-w-xl text-sm leading-6">
-                Your request is stored securely for support and audit purposes. See the{' '}
+                Your request is stored securely for support and audit purposes.
+                See the{' '}
                 <Link className="text-primary underline" href="/privacy">
                   Privacy notice
                 </Link>{' '}

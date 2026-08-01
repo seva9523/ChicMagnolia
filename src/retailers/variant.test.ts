@@ -11,8 +11,12 @@ describe('variant helpers', () => {
       <div>12 (EUR L) NOT AVAILABLE. I WANT IT!</div>
     `;
 
-    expect(variantInStock(html, { size: 'L', colour: 'Russet' }, true)).toBe(false);
-    expect(variantInStock(html, { size: 'M', colour: 'Russet' }, false)).toBe(true);
+    expect(variantInStock(html, { size: 'L', colour: 'Russet' }, true)).toBe(
+      false,
+    );
+    expect(variantInStock(html, { size: 'M', colour: 'Russet' }, false)).toBe(
+      true,
+    );
   });
 
   it('matches a numeric UK size without borrowing another size status', () => {
@@ -21,8 +25,12 @@ describe('variant helpers', () => {
       <div>UK 14 Sold out</div>
     `;
 
-    expect(variantInStock(html, { size: '12', colour: null }, false)).toBe(true);
-    expect(variantInStock(html, { size: '14', colour: null }, true)).toBe(false);
+    expect(variantInStock(html, { size: '12', colour: null }, false)).toBe(
+      true,
+    );
+    expect(variantInStock(html, { size: '14', colour: null }, true)).toBe(
+      false,
+    );
   });
 
   it('uses a price shown in the selected size option', () => {
@@ -51,6 +59,8 @@ describe('variant helpers', () => {
     const html = '<h1>Dress</h1><p>£35.99</p>';
 
     expect(variantPriceMinor(html, { size: 'L', colour: 'Russet' })).toBeNull();
-    expect(variantInStock(html, { size: 'L', colour: 'Russet' }, true)).toBe(true);
+    expect(variantInStock(html, { size: 'L', colour: 'Russet' }, true)).toBe(
+      true,
+    );
   });
 });

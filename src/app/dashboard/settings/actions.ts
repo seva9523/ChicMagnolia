@@ -24,7 +24,9 @@ export async function deleteAccount(formData: FormData) {
 
   if (!user) redirect('/login');
   if (!accountDeletionConfirmed(confirmationEmail, user.email)) {
-    settingsRedirect('Enter the email address for this account exactly to confirm deletion.');
+    settingsRedirect(
+      'Enter the email address for this account exactly to confirm deletion.',
+    );
   }
 
   let customerId: string | null = null;
@@ -32,7 +34,9 @@ export async function deleteAccount(formData: FormData) {
     const subscription = await getUserSubscription(supabase, user.id);
     customerId = subscription?.stripe_customer_id ?? null;
   } catch {
-    settingsRedirect('We could not verify the linked billing account. Nothing was deleted.');
+    settingsRedirect(
+      'We could not verify the linked billing account. Nothing was deleted.',
+    );
   }
 
   let stripeCustomerRemoved = false;
@@ -52,7 +56,10 @@ export async function deleteAccount(formData: FormData) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { error: deletionError } = await admin.auth.admin.deleteUser(user.id, false);
+  const { error: deletionError } = await admin.auth.admin.deleteUser(
+    user.id,
+    false,
+  );
   if (deletionError) {
     settingsRedirect(
       stripeCustomerRemoved

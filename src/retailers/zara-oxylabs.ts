@@ -35,11 +35,15 @@ function titleFromHtml(html: string): string {
   }
 
   const text = stripTags(html);
-  const productName = text.match(/([A-Z][A-Z\s-]{5,80})\s+\d{1,4}(?:[.,]\d{2})\s*(?:GBP|£)/)?.[1];
+  const productName = text.match(
+    /([A-Z][A-Z\s-]{5,80})\s+\d{1,4}(?:[.,]\d{2})\s*(?:GBP|£)/,
+  )?.[1];
   return productName?.trim() || 'Zara product';
 }
 
-function renderedPrice(html: string): { amount: string; currency: string } | null {
+function renderedPrice(
+  html: string,
+): { amount: string; currency: string } | null {
   const text = stripTags(html);
   const patterns: Array<{ regex: RegExp; currency: string }> = [
     { regex: /\b([0-9]{1,4}(?:[.,][0-9]{2}))\s*GBP\b/i, currency: 'GBP' },
@@ -75,7 +79,8 @@ export function parseZaraOxylabsHtml(
       ...snapshot,
       price: {
         ...snapshot.price,
-        amountMinor: variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
+        amountMinor:
+          variantPriceMinor(html, variant) ?? snapshot.price.amountMinor,
       },
       inStock: variantInStock(html, variant, snapshot.inStock),
     };

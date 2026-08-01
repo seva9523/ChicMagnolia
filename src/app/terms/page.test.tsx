@@ -7,14 +7,18 @@ describe('Terms of service', () => {
   it('states retailer, billing, support and consumer-right limitations clearly', () => {
     render(<TermsPage />);
 
-    expect(screen.getByRole('heading', { name: 'Terms of service' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Terms of service' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /Important retailer limitations/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /Subscription and billing/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Nothing in these terms removes a statutory/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nothing in these terms removes a statutory/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /support form/i })).toHaveAttribute(
       'href',
       '/support',
