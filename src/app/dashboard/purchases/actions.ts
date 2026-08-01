@@ -21,7 +21,9 @@ const purchaseSchema = z
     retailerName: z.string().trim().min(2, 'Retailer is required.').max(100),
     productName: z.string().trim().min(2, 'Product name is required.').max(200),
     productUrl: z.string().trim().url('Enter a valid product URL.'),
-    purchasePrice: z.coerce.number().positive('Purchase price must be greater than zero.'),
+    purchasePrice: z.coerce
+      .number()
+      .positive('Purchase price must be greater than zero.'),
     purchaseDate: z.string().date('Purchase date is required.'),
     returnDeadline: z.string().date('Return deadline is required.'),
     size: z.string().trim().max(50).optional(),
@@ -44,7 +46,9 @@ async function requirePaidMonitoringAccess(
   try {
     subscription = await getUserSubscription(supabase, userId);
   } catch {
-    redirect('/dashboard/billing?message=We could not confirm your subscription access.');
+    redirect(
+      '/dashboard/billing?message=We could not confirm your subscription access.',
+    );
   }
 
   if (!hasMonitoringAccess(subscription)) {
@@ -80,7 +84,8 @@ export async function createPurchase(formData: FormData) {
   });
 
   if (!result.success) {
-    const message = result.error.issues[0]?.message ?? 'Check the form and try again.';
+    const message =
+      result.error.issues[0]?.message ?? 'Check the form and try again.';
     redirect(`/dashboard/purchases/new?error=${encodeURIComponent(message)}`);
   }
 
@@ -96,7 +101,10 @@ export async function createPurchase(formData: FormData) {
   try {
     count = await activePurchaseCount(supabase, user.id);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Active purchases could not be counted.';
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Active purchases could not be counted.';
     redirect(`/dashboard/purchases/new?error=${encodeURIComponent(message)}`);
   }
   if (count >= MAX_ACTIVE_PURCHASES) {
@@ -120,7 +128,10 @@ export async function createPurchase(formData: FormData) {
     colour: result.data.colour ?? null,
   });
 
-  if (error) redirect(`/dashboard/purchases/new?error=${encodeURIComponent(error.message)}`);
+  if (error)
+    redirect(
+      `/dashboard/purchases/new?error=${encodeURIComponent(error.message)}`,
+    );
 
   revalidatePath('/dashboard');
   redirect('/dashboard?message=Purchase added successfully.');
@@ -130,7 +141,8 @@ export async function updatePurchaseStatus(formData: FormData) {
   const purchaseId = field(formData, 'purchaseId');
   const status = field(formData, 'status');
 
-  if (!z.string().uuid().safeParse(purchaseId).success) redirect('/dashboard?message=Invalid purchase.');
+  if (!z.string().uuid().safeParse(purchaseId).success)
+    redirect('/dashboard?message=Invalid purchase.');
   if (!['tracking', 'returned', 'stopped'].includes(status)) {
     redirect('/dashboard?message=Invalid purchase status.');
   }
@@ -148,7 +160,8 @@ export async function updatePurchaseStatus(formData: FormData) {
     .eq('id', purchaseId)
     .eq('user_id', user.id)
     .maybeSingle();
-  if (existingError || !existing) redirect('/dashboard?message=Purchase could not be found.');
+  if (existingError || !existing)
+    redirect('/dashboard?message=Purchase could not be found.');
 
   if (status === 'tracking' && existing.status !== 'tracking') {
     await requirePaidMonitoringAccess(supabase, user.id);
@@ -160,7 +173,9 @@ export async function updatePurchaseStatus(formData: FormData) {
       redirect('/dashboard?message=Active purchases could not be counted.');
     }
     if (count >= MAX_ACTIVE_PURCHASES) {
-      redirect(`/dashboard?message=Only ${MAX_ACTIVE_PURCHASES} purchases can be actively tracked.`);
+      redirect(
+        `/dashboard?message=Only ${MAX_ACTIVE_PURCHASES} purchases can be actively tracked.`,
+      );
     }
   }
 
@@ -170,7 +185,8 @@ export async function updatePurchaseStatus(formData: FormData) {
     .eq('id', purchaseId)
     .eq('user_id', user.id);
 
-  if (error) redirect(`/dashboard?message=${encodeURIComponent(error.message)}`);
+  if (error)
+    redirect(`/dashboard?message=${encodeURIComponent(error.message)}`);
 
   revalidatePath('/dashboard');
   redirect('/dashboard?message=Purchase updated.');
@@ -178,7 +194,8 @@ export async function updatePurchaseStatus(formData: FormData) {
 
 export async function checkCurrentPrice(formData: FormData) {
   const purchaseId = field(formData, 'purchaseId');
-  if (!z.string().uuid().safeParse(purchaseId).success) redirect('/dashboard?message=Invalid purchase.');
+  if (!z.string().uuid().safeParse(purchaseId).success)
+    redirect('/dashboard?message=Invalid purchase.');
 
   const supabase = await createSupabaseServerClient();
   const {
@@ -196,9 +213,13 @@ export async function checkCurrentPrice(formData: FormData) {
     .eq('user_id', user.id)
     .single();
 
-  if (purchaseError || !purchase) redirect('/dashboard?message=Purchase could not be found.');
+  if (purchaseError || !purchase)
+    redirect('/dashboard?message=Purchase could not be found.');
 
-  const outcome = await performPriceCheck(supabase, purchase as TrackedPurchaseForCheck);
+  const outcome = await performPriceCheck(
+    supabase,
+    purchase as TrackedPurchaseForCheck,
+  );
   const message = outcome.ok
     ? 'Current price checked successfully.'
     : `Price check failed: ${outcome.error}`;

@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 function migration(name: string) {
-  return readFileSync(join(process.cwd(), 'supabase', 'migrations', name), 'utf8');
+  return readFileSync(
+    join(process.cwd(), 'supabase', 'migrations', name),
+    'utf8',
+  );
 }
 
 describe('database privacy controls', () => {
@@ -19,7 +22,9 @@ describe('database privacy controls', () => {
     ];
 
     for (const file of files) {
-      expect(migration(file)).toMatch(/references auth\.users\s*\(id\) on delete cascade/i);
+      expect(migration(file)).toMatch(
+        /references auth\.users\s*\(id\) on delete cascade/i,
+      );
     }
   });
 
@@ -42,7 +47,10 @@ describe('database privacy controls', () => {
       'legal_acceptances',
     ]) {
       expect(combined).toMatch(
-        new RegExp(`alter table public\\.${table} enable row level security`, 'i'),
+        new RegExp(
+          `alter table public\\.${table} enable row level security`,
+          'i',
+        ),
       );
     }
   });
@@ -67,7 +75,9 @@ describe('database privacy controls', () => {
     const sql = migration('202608010002_create_support_requests.sql');
 
     expect(sql).toMatch(/references auth\.users\s*\(id\) on delete set null/i);
-    expect(sql).toMatch(/alter table public\.support_requests enable row level security/i);
+    expect(sql).toMatch(
+      /alter table public\.support_requests enable row level security/i,
+    );
     expect(sql).not.toMatch(/create policy[^;]+support_requests/i);
     expect(sql).toMatch(
       /only the service role can read or mutate the[\s\S]*support queue/i,

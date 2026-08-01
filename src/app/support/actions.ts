@@ -24,7 +24,9 @@ function firstValidationError(error: { issues: { message: string }[] }) {
 }
 
 function safeErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message.slice(0, 1000) : 'Unknown notification error';
+  return error instanceof Error
+    ? error.message.slice(0, 1000)
+    : 'Unknown notification error';
 }
 
 export async function submitSupportRequest(formData: FormData) {
@@ -49,7 +51,10 @@ export async function submitSupportRequest(formData: FormData) {
   try {
     admin = createSupabaseAdminClient();
   } catch {
-    supportRedirect('error', 'Support is temporarily unavailable. Please try again later.');
+    supportRedirect(
+      'error',
+      'Support is temporarily unavailable. Please try again later.',
+    );
   }
 
   const cutoff = new Date(
@@ -62,7 +67,10 @@ export async function submitSupportRequest(formData: FormData) {
     .gte('created_at', cutoff);
 
   if (countError) {
-    supportRedirect('error', 'Support is temporarily unavailable. Please try again later.');
+    supportRedirect(
+      'error',
+      'Support is temporarily unavailable. Please try again later.',
+    );
   }
   if ((count ?? 0) >= RATE_LIMIT_MAX_REQUESTS) {
     supportRedirect(
@@ -87,7 +95,10 @@ export async function submitSupportRequest(formData: FormData) {
     .single();
 
   if (insertError || !stored) {
-    supportRedirect('error', 'Your request could not be saved. Please try again later.');
+    supportRedirect(
+      'error',
+      'Your request could not be saved. Please try again later.',
+    );
   }
 
   let notificationStatus: 'sent' | 'failed' = 'sent';

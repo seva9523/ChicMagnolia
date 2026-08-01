@@ -9,7 +9,9 @@ import {
 
 const now = new Date('2026-07-29T12:00:00.000Z');
 
-function subscription(overrides: Partial<SubscriptionRecord> = {}): SubscriptionRecord {
+function subscription(
+  overrides: Partial<SubscriptionRecord> = {},
+): SubscriptionRecord {
   return {
     user_id: '00000000-0000-4000-8000-000000000001',
     stripe_customer_id: 'cus_test',
@@ -31,7 +33,10 @@ describe('subscription access', () => {
     expect(hasMonitoringAccess(subscription(), now)).toBe(true);
     expect(
       hasMonitoringAccess(
-        subscription({ status: 'trialing', trial_end: '2026-08-05T00:00:00.000Z' }),
+        subscription({
+          status: 'trialing',
+          trial_end: '2026-08-05T00:00:00.000Z',
+        }),
         now,
       ),
     ).toBe(true);
@@ -40,12 +45,22 @@ describe('subscription access', () => {
   it('keeps cancel-at-period-end access only until the paid period ends', () => {
     const canceling = subscription({ cancel_at_period_end: true });
     expect(hasMonitoringAccess(canceling, now)).toBe(true);
-    expect(hasMonitoringAccess(canceling, new Date('2026-08-01T00:00:01.000Z'))).toBe(false);
-    expect(subscriptionStatusLabel(canceling, now)).toBe('Canceling at period end');
+    expect(
+      hasMonitoringAccess(canceling, new Date('2026-08-01T00:00:01.000Z')),
+    ).toBe(false);
+    expect(subscriptionStatusLabel(canceling, now)).toBe(
+      'Canceling at period end',
+    );
   });
 
   it('denies monitoring for past-due, unpaid, canceled and incomplete states', () => {
-    for (const status of ['past_due', 'unpaid', 'canceled', 'incomplete', 'paused'] as const) {
+    for (const status of [
+      'past_due',
+      'unpaid',
+      'canceled',
+      'incomplete',
+      'paused',
+    ] as const) {
       expect(hasMonitoringAccess(subscription({ status }), now)).toBe(false);
     }
   });
@@ -54,7 +69,9 @@ describe('subscription access', () => {
     expect(canStartCheckout(null)).toBe(true);
     expect(canStartCheckout(subscription({ status: 'inactive' }))).toBe(true);
     expect(canStartCheckout(subscription({ status: 'canceled' }))).toBe(true);
-    expect(canStartCheckout(subscription({ status: 'incomplete_expired' }))).toBe(true);
+    expect(
+      canStartCheckout(subscription({ status: 'incomplete_expired' })),
+    ).toBe(true);
     expect(canStartCheckout(subscription({ status: 'active' }))).toBe(false);
     expect(canStartCheckout(subscription({ status: 'past_due' }))).toBe(false);
   });

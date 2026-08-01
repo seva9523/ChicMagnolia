@@ -146,9 +146,8 @@ function productLevelInStock(
 function attributeValue(attributes: string, name: string) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return (
-    attributes.match(
-      new RegExp(`\\b${escaped}=["']([^"']*)["']`, 'i'),
-    )?.[1] ?? null
+    attributes.match(new RegExp(`\\b${escaped}=["']([^"']*)["']`, 'i'))?.[1] ??
+    null
   );
 }
 

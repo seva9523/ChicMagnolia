@@ -68,7 +68,9 @@ function findProductNode(nodes: unknown[]): Record<string, unknown> | null {
 }
 
 function priceToMinorUnits(value: unknown): number {
-  const normalized = String(value).replace(/[^0-9.,]/g, '').replace(',', '.');
+  const normalized = String(value)
+    .replace(/[^0-9.,]/g, '')
+    .replace(',', '.');
   const amount = Number(normalized);
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error('Mango product price could not be parsed.');
@@ -96,9 +98,10 @@ export function parseMangoProductHtml(
       const availability = String(offerRecord.availability ?? '');
       return {
         canonicalUrl: String(product.url ?? url.toString()),
-        retailerProductId: String(
-          product.sku ?? product.productID ?? productIdFromUrl(url) ?? '',
-        ) || null,
+        retailerProductId:
+          String(
+            product.sku ?? product.productID ?? productIdFromUrl(url) ?? '',
+          ) || null,
         title: String(product.name ?? 'Mango product'),
         price: {
           amountMinor: priceToMinorUnits(offerRecord.price),
@@ -188,8 +191,7 @@ export const mangoAdapter: RetailerAdapter = {
 
   supports(url) {
     return (
-      url.hostname === 'shop.mango.com' &&
-      url.pathname.startsWith('/gb/en/p/')
+      url.hostname === 'shop.mango.com' && url.pathname.startsWith('/gb/en/p/')
     );
   },
 
@@ -207,12 +209,16 @@ export const mangoAdapter: RetailerAdapter = {
         );
       } catch (browserlessError) {
         const directMessage =
-          directError instanceof Error ? directError.message : 'Direct Mango request failed.';
+          directError instanceof Error
+            ? directError.message
+            : 'Direct Mango request failed.';
         const browserlessMessage =
           browserlessError instanceof Error
             ? browserlessError.message
             : 'Browserless fallback failed.';
-        throw new Error(`${directMessage} Browserless fallback: ${browserlessMessage}`);
+        throw new Error(
+          `${directMessage} Browserless fallback: ${browserlessMessage}`,
+        );
       }
     }
   },

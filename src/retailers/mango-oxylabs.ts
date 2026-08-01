@@ -37,7 +37,9 @@ function titleFromHtml(html: string): string {
 
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   if (title) {
-    const value = stripTags(title).replace(/\s*\|\s*MANGO.*$/i, '').trim();
+    const value = stripTags(title)
+      .replace(/\s*\|\s*MANGO.*$/i, '')
+      .trim();
     if (value) return value;
   }
 
@@ -52,7 +54,9 @@ type PriceCandidate = {
 
 function numericPrice(value: string): number | null {
   const amount = Number(value.replace(',', '.'));
-  return Number.isFinite(amount) && amount > 0 && amount < 100_000 ? amount : null;
+  return Number.isFinite(amount) && amount > 0 && amount < 100_000
+    ? amount
+    : null;
 }
 
 function visibleProductSection(html: string): string | null {
@@ -63,9 +67,11 @@ function visibleProductSection(html: string): string | null {
 }
 
 function labelledCurrentPrice(html: string): PriceCandidate | null {
-  const sources = [visibleProductSection(html), stripTags(html), decodeHtml(html)].filter(
-    (source): source is string => Boolean(source),
-  );
+  const sources = [
+    visibleProductSection(html),
+    stripTags(html),
+    decodeHtml(html),
+  ].filter((source): source is string => Boolean(source));
   const patterns = [
     /\bcurrent\s+price\b[\s\S]{0,160}?£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i,
     /\b(?:sale|discounted)\s+price\b[\s\S]{0,160}?£\s*([0-9]{1,5}(?:[.,][0-9]{1,2})?)/i,
@@ -111,14 +117,22 @@ function productJsonScopes(html: string, productId: string): string[] {
   while (start < html.length) {
     const index = html.indexOf(productId, start);
     if (index < 0) break;
-    scopes.push(html.slice(Math.max(0, index - 5_000), Math.min(html.length, index + 12_000)));
+    scopes.push(
+      html.slice(
+        Math.max(0, index - 5_000),
+        Math.min(html.length, index + 12_000),
+      ),
+    );
     start = index + productId.length;
   }
 
   return scopes;
 }
 
-function scopedJsonPrice(html: string, productId: string): PriceCandidate | null {
+function scopedJsonPrice(
+  html: string,
+  productId: string,
+): PriceCandidate | null {
   const priorities: Record<string, number> = {
     salePrice: 0,
     discountedPrice: 0,
@@ -178,7 +192,11 @@ const mangoUnavailableSignals = [
   'notify me',
 ];
 
-function selectedSizeMatches(requestedSize: string, numericSize: string, letterSize: string): boolean {
+function selectedSizeMatches(
+  requestedSize: string,
+  numericSize: string,
+  letterSize: string,
+): boolean {
   const normalized = requestedSize.trim().toUpperCase();
   const numeric = normalized.match(/\b(\d{1,2})\b/)?.[1];
   const letter = normalized.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL)\b/)?.[1];
@@ -186,7 +204,10 @@ function selectedSizeMatches(requestedSize: string, numericSize: string, letterS
   return numeric === numericSize || letter === letterSize;
 }
 
-function mangoSelectedSizeAvailability(html: string, size: string | null): boolean | null {
+function mangoSelectedSizeAvailability(
+  html: string,
+  size: string | null,
+): boolean | null {
   if (!size) return null;
 
   // Mango's product URL already identifies the selected colour. Its size list uses
@@ -195,7 +216,8 @@ function mangoSelectedSizeAvailability(html: string, size: string | null): boole
   // so an unavailable XS/S/M cannot make the selected L/XL appear unavailable.
   const section = visibleProductSection(html) ?? html;
   const text = stripTags(section);
-  const rowPattern = /\b(\d{1,2})\s*\(\s*EUR\s+(XXS|XS|S|M|L|XL|XXL|XXXL)\s*\)/gi;
+  const rowPattern =
+    /\b(\d{1,2})\s*\(\s*EUR\s+(XXS|XS|S|M|L|XL|XXL|XXXL)\s*\)/gi;
   const rows = [...text.matchAll(rowPattern)];
 
   for (let index = 0; index < rows.length; index += 1) {
@@ -225,7 +247,10 @@ function mangoProductInStock(html: string): boolean {
 }
 
 function mangoVariantInStock(html: string, variant: ProductVariant): boolean {
-  const selectedSizeAvailability = mangoSelectedSizeAvailability(html, variant.size);
+  const selectedSizeAvailability = mangoSelectedSizeAvailability(
+    html,
+    variant.size,
+  );
   if (selectedSizeAvailability !== null) return selectedSizeAvailability;
 
   return variantInStock(html, variant, mangoProductInStock(html));

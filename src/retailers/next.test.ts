@@ -23,8 +23,12 @@ const html = `
 describe('nextAdapter', () => {
   it('recognises Next UK product URLs', () => {
     expect(nextAdapter.supports(productUrl)).toBe(true);
-    expect(nextAdapter.supports(new URL('https://www.next.co.uk/shop/gender-women'))).toBe(false);
-    expect(nextAdapter.supports(new URL('https://www.nextdirect.com/style/test'))).toBe(false);
+    expect(
+      nextAdapter.supports(new URL('https://www.next.co.uk/shop/gender-women')),
+    ).toBe(false);
+    expect(
+      nextAdapter.supports(new URL('https://www.nextdirect.com/style/test')),
+    ).toBe(false);
   });
 
   it('parses the current price before the previous price', () => {

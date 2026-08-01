@@ -21,8 +21,12 @@ describe('Stripe billing helpers', () => {
 
     expect(params.mode).toBe('subscription');
     expect(params.customer).toBe('cus_test');
-    expect(params.client_reference_id).toBe('00000000-0000-4000-8000-000000000001');
-    expect(params.line_items).toEqual([{ price: 'price_monthly', quantity: 1 }]);
+    expect(params.client_reference_id).toBe(
+      '00000000-0000-4000-8000-000000000001',
+    );
+    expect(params.line_items).toEqual([
+      { price: 'price_monthly', quantity: 1 },
+    ]);
     expect(params.subscription_data?.metadata?.user_id).toBe(
       '00000000-0000-4000-8000-000000000001',
     );
@@ -88,7 +92,11 @@ describe('Stripe billing helpers', () => {
       secret: 'whsec_test',
     });
 
-    expect(verifyStripeEvent(stripe, payload, validHeader, 'whsec_test').id).toBe('evt_test');
-    expect(() => verifyStripeEvent(stripe, payload, validHeader, 'whsec_wrong')).toThrow();
+    expect(
+      verifyStripeEvent(stripe, payload, validHeader, 'whsec_test').id,
+    ).toBe('evt_test');
+    expect(() =>
+      verifyStripeEvent(stripe, payload, validHeader, 'whsec_wrong'),
+    ).toThrow();
   });
 });

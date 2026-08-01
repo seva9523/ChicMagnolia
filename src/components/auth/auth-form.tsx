@@ -31,11 +31,14 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
           </Link>
           <h1 className="mt-4 text-3xl font-semibold">{title}</h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Track purchases and catch price drops before your return window closes.
+            Track purchases and catch price drops before your return window
+            closes.
           </p>
 
           {error ? (
-            <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
+            <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
           ) : null}
           {message ? (
             <p className="mt-5 rounded-xl bg-green-50 p-3 text-sm text-green-700">
@@ -73,7 +76,9 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
                   name="password"
                   type="password"
                   minLength={8}
-                  autoComplete={isSignUp || isReset ? 'new-password' : 'current-password'}
+                  autoComplete={
+                    isSignUp || isReset ? 'new-password' : 'current-password'
+                  }
                   required
                   className="mt-2 w-full rounded-xl border bg-transparent px-4 py-3"
                 />
@@ -89,11 +94,17 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
                 />
                 <span>
                   I agree to the{' '}
-                  <Link className="font-medium text-primary underline" href="/terms">
+                  <Link
+                    className="text-primary font-medium underline"
+                    href="/terms"
+                  >
                     Terms of service
                   </Link>{' '}
                   and acknowledge the{' '}
-                  <Link className="font-medium text-primary underline" href="/privacy">
+                  <Link
+                    className="text-primary font-medium underline"
+                    href="/privacy"
+                  >
                     Privacy notice
                   </Link>
                   .
@@ -117,7 +128,9 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
             ) : (
               <Link href="/login">Back to login</Link>
             )}
-            {mode === 'login' ? <Link href="/forgot-password">Forgot password?</Link> : null}
+            {mode === 'login' ? (
+              <Link href="/forgot-password">Forgot password?</Link>
+            ) : null}
           </div>
         </section>
       </main>

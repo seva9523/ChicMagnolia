@@ -20,7 +20,11 @@ describe('publicAuthErrorMessage', () => {
   it('explains authentication-email rate limits', () => {
     expect(
       publicAuthErrorMessage(
-        { code: 'over_email_send_rate_limit', status: 429, message: 'rate limited' },
+        {
+          code: 'over_email_send_rate_limit',
+          status: 429,
+          message: 'rate limited',
+        },
         'sign-up',
       ),
     ).toMatch(/too many authentication emails/i);
@@ -29,7 +33,11 @@ describe('publicAuthErrorMessage', () => {
   it('keeps a useful non-server authentication error', () => {
     expect(
       publicAuthErrorMessage(
-        { code: 'invalid_credentials', status: 400, message: 'Invalid login credentials' },
+        {
+          code: 'invalid_credentials',
+          status: 400,
+          message: 'Invalid login credentials',
+        },
         'sign-in',
       ),
     ).toBe('Invalid login credentials');

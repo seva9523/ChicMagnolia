@@ -10,10 +10,9 @@ describe('Home', () => {
     expect(
       screen.getByText('Catch price drops before your return window closes.'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute(
-      'href',
-      '/sign-up',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Create account' }),
+    ).toHaveAttribute('href', '/sign-up');
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/login',

@@ -40,11 +40,18 @@ function metaContent(html: string, key: string): string | null {
 }
 
 function stripTags(value: string) {
-  return decodeHtml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+  return decodeHtml(
+    value
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
 }
 
 function priceToMinorUnits(value: unknown): number {
-  const normalized = String(value).replace(/[^0-9.,]/g, '').replace(',', '.');
+  const normalized = String(value)
+    .replace(/[^0-9.,]/g, '')
+    .replace(',', '.');
   const amount = Number(normalized);
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error('Next product price could not be parsed.');
@@ -145,7 +152,8 @@ async function fetchBrowserlessHtml(
     signal: AbortSignal.timeout(50_000),
   });
 
-  if (!response.ok) throw new Error(`Browserless returned HTTP ${response.status}.`);
+  if (!response.ok)
+    throw new Error(`Browserless returned HTTP ${response.status}.`);
   const html = await response.text();
   if (!html) throw new Error('Browserless returned no page content.');
   return html;
@@ -168,15 +176,23 @@ export const nextAdapter: RetailerAdapter = {
       return parseNextProductHtml(await fetchDirectHtml(url), url, variant);
     } catch (directError) {
       try {
-        return parseNextProductHtml(await fetchBrowserlessHtml(url), url, variant);
+        return parseNextProductHtml(
+          await fetchBrowserlessHtml(url),
+          url,
+          variant,
+        );
       } catch (browserlessError) {
         const directMessage =
-          directError instanceof Error ? directError.message : 'Direct Next request failed.';
+          directError instanceof Error
+            ? directError.message
+            : 'Direct Next request failed.';
         const browserlessMessage =
           browserlessError instanceof Error
             ? browserlessError.message
             : 'Browserless fallback failed.';
-        throw new Error(`${directMessage} Browserless fallback: ${browserlessMessage}`);
+        throw new Error(
+          `${directMessage} Browserless fallback: ${browserlessMessage}`,
+        );
       }
     }
   },

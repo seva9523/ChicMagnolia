@@ -69,9 +69,7 @@ function findCosProduct(
   }
 
   values.forEach(visit);
-  return (
-    (best as { record: JsonRecord; score: number } | null)?.record ?? null
-  );
+  return (best as { record: JsonRecord; score: number } | null)?.record ?? null;
 }
 
 function productColour(product: JsonRecord | null): string | null {
@@ -88,8 +86,7 @@ function productColour(product: JsonRecord | null): string | null {
 
 function titleColour(title: string | null): string | null {
   return (
-    title?.match(/\s+-\s+(.+?)\s*\|\s*COS(?:\s+GB)?$/i)?.[1]?.trim() ??
-    null
+    title?.match(/\s+-\s+(.+?)\s*\|\s*COS(?:\s+GB)?$/i)?.[1]?.trim() ?? null
   );
 }
 
@@ -193,9 +190,7 @@ export function parseCosProductHtml(
   const metaPrice = metaContent(html, 'product:price:amount');
   const amountMinor =
     productPriceMinor(product) ??
-    (metaPrice
-      ? recordCurrentPriceMinor({ currentPrice: metaPrice })
-      : null) ??
+    (metaPrice ? recordCurrentPriceMinor({ currentPrice: metaPrice }) : null) ??
     elementCurrentPriceMinor(html);
   if (amountMinor === null) {
     throw new Error(

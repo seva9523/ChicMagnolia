@@ -92,7 +92,9 @@ function offerPriceMinor(variant: JsonRecord): number | null {
 }
 
 function offerInStock(variant: JsonRecord): boolean | null {
-  return recordAvailability(offerRecord(variant)) ?? recordAvailability(variant);
+  return (
+    recordAvailability(offerRecord(variant)) ?? recordAvailability(variant)
+  );
 }
 
 function findHmProductRecord(
@@ -133,9 +135,7 @@ function findHmProductRecord(
   }
 
   values.forEach(visit);
-  return (
-    (best as { record: JsonRecord; score: number } | null)?.record ?? null
-  );
+  return (best as { record: JsonRecord; score: number } | null)?.record ?? null;
 }
 
 function productRecordPriceMinor(record: JsonRecord | null): number | null {
@@ -151,7 +151,8 @@ function productRecordPriceMinor(record: JsonRecord | null): number | null {
     if (parsed !== null) return parsed;
   }
 
-  const regularPrice = record.whitePriceValue ?? record.whitePrice ?? record.price;
+  const regularPrice =
+    record.whitePriceValue ?? record.whitePrice ?? record.price;
   return recordCurrentPriceMinor({ currentPrice: regularPrice });
 }
 
