@@ -82,8 +82,8 @@ jobs:
           test_dir=$(mktemp -d)
           trap 'rm -rf "${test_dir}"' EXIT
 
-          age-keygen --output "${test_dir}/identity.txt"
-          recipient=$(age-keygen --yield "${test_dir}/identity.txt")
+          age-keygen -o "${test_dir}/identity.txt"
+          recipient=$(age-keygen -y "${test_dir}/identity.txt")
 
           printf 'backup-toolchain-check\n' > "${test_dir}/plain.txt"
 
