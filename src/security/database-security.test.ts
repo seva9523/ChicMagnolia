@@ -63,6 +63,15 @@ describe('database privacy controls', () => {
     );
   });
 
+  it('keeps support requests private while preserving unresolved cases after user deletion', () => {
+    const sql = migration('202608010002_create_support_requests.sql');
+
+    expect(sql).toMatch(/references auth\.users\s*\(id\) on delete set null/i);
+    expect(sql).toMatch(/alter table public\.support_requests enable row level security/i);
+    expect(sql).not.toMatch(/create policy[^;]+support_requests/i);
+    expect(sql).toMatch(/only the service role can read or mutate the support queue/i);
+  });
+
   it('treats delayed Stripe events for deleted users as a no-op', () => {
     const sql = migration('202608010001_harden_stripe_subscription_sync.sql');
 
