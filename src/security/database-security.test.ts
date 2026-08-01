@@ -62,4 +62,17 @@ describe('database privacy controls', () => {
       /create policy[^;]+legal_acceptances[\s\S]+?for delete/i,
     );
   });
+
+  it('treats delayed Stripe events for deleted users as a no-op', () => {
+    const sql = migration('202608010001_harden_stripe_subscription_sync.sql');
+
+    expect(sql).toMatch(/from auth\.users/i);
+    expect(sql).toMatch(/where id = p_user_id/i);
+    expect(sql).toMatch(/return false/i);
+    expect(sql.indexOf('return false')).toBeLessThan(
+      sql.indexOf('insert into public.subscriptions'),
+    );
+    expect(sql).toMatch(/grant execute[\s\S]+to service_role/i);
+    expect(sql).toMatch(/revoke all[\s\S]+from public, anon, authenticated/i);
+  });
 });
