@@ -22,6 +22,9 @@ updates:
           - minor
           - patch
     ignore:
+      - dependency-name: resend
+        versions:
+          - 6.18.1
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
