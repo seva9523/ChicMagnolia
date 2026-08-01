@@ -27,13 +27,6 @@ jobs:
       BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
 
     steps:
-      - name: Validate pull-request workflow
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Backup data is never generated during pull-request validation."
-
       - name: Check backup configuration
         if: github.event_name != 'pull_request'
         id: configuration
@@ -58,19 +51,56 @@ jobs:
           echo "configured=true" >> "${GITHUB_OUTPUT}"
 
       - name: Set up Supabase CLI
-        if: steps.configuration.outputs.configured == 'true'
+        if: github.event_name == 'pull_request' || steps.configuration.outputs.configured == 'true'
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:
           version: 2.111.0
 
       - name: Install age
-        if: steps.configuration.outputs.configured == 'true'
+        if: github.event_name == 'pull_request' || steps.configuration.outputs.configured == 'true'
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes age
           age --version
+
+      - name: Validate backup toolchain
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          supabase --version | grep --fixed-strings '2.111.0'
+
+          help_text=$(supabase db dump --help 2>&1)
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--role-only'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--data-only'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--use-copy'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--exclude'
+
+          test_dir=$(mktemp -d)
+          trap 'rm -rf "${test_dir}"' EXIT
+
+          age-keygen --output "${test_dir}/identity.txt"
+          recipient=$(age-keygen --yield "${test_dir}/identity.txt")
+
+          printf 'backup-toolchain-check\n' > "${test_dir}/plain.txt"
+
+          age \
+            --recipient "${recipient}" \
+            --output "${test_dir}/plain.txt.age" \
+            "${test_dir}/plain.txt"
+
+          age \
+            --decrypt \
+            --identity "${test_dir}/identity.txt" \
+            --output "${test_dir}/decrypted.txt" \
+            "${test_dir}/plain.txt.age"
+
+          cmp "${test_dir}/plain.txt" "${test_dir}/decrypted.txt"
+          echo "Backup CLI flags and local age encryption round trip passed."
+          echo "No production connection or database dump was attempted."
 
       - name: Dump and encrypt database
         if: steps.configuration.outputs.configured == 'true'
