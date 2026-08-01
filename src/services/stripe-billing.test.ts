@@ -10,11 +10,13 @@ import {
 
 describe('Stripe billing helpers', () => {
   it('builds hosted subscription Checkout from trusted server values', () => {
+    const previewOrigin =
+      'https://chic-magnolia-git-sprint-7-privacy-be-ad2274-seva9523s-projects.vercel.app';
     const params = buildCheckoutSessionParams({
       userId: '00000000-0000-4000-8000-000000000001',
       customerId: 'cus_test',
       priceId: 'price_monthly',
-      appUrl: 'https://chicmagnolia.com',
+      appUrl: previewOrigin,
     });
 
     expect(params.mode).toBe('subscription');
@@ -24,8 +26,12 @@ describe('Stripe billing helpers', () => {
     expect(params.subscription_data?.metadata?.user_id).toBe(
       '00000000-0000-4000-8000-000000000001',
     );
-    expect(params.success_url).toContain('/dashboard/billing?checkout=success');
-    expect(params.cancel_url).toContain('/dashboard/billing?checkout=cancelled');
+    expect(params.success_url).toBe(
+      `${previewOrigin}/dashboard/billing?checkout=success`,
+    );
+    expect(params.cancel_url).toBe(
+      `${previewOrigin}/dashboard/billing?checkout=cancelled`,
+    );
   });
 
   it('normalizes subscription periods from current Stripe subscription-item fields', () => {

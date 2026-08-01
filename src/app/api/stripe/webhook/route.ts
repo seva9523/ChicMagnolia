@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getStripeClient } from '@/integrations/stripe';
 import { serverEnv } from '@/lib/env/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { isStripeResourceMissing } from '@/services/account-lifecycle';
 import {
   buildSubscriptionSync,
   checkoutSessionUserId,
@@ -90,13 +91,32 @@ async function markEventFailed(supabase: SupabaseClient, eventId: string, messag
     .eq('stripe_event_id', eventId);
 }
 
+async function existingUserId(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.id ?? null;
+}
+
 async function linkCheckoutCustomer(
   supabase: SupabaseClient,
   session: Stripe.Checkout.Session,
 ) {
   const userId = checkoutSessionUserId(session);
   const customerId = stripeObjectId(session.customer);
-  if (!userId || !customerId) throw new Error('Checkout Session is missing its trusted user mapping.');
+  if (!userId || !customerId) {
+    throw new Error('Checkout Session is missing its trusted user mapping.');
+  }
+
+  // A Checkout event can arrive after a user has deleted the account. In that case,
+  // acknowledge the signed event without recreating an application record.
+  if (!(await existingUserId(supabase, userId))) return;
 
   const { data: existing, error: existingError } = await supabase
     .from('subscriptions')
@@ -123,9 +143,9 @@ async function linkCheckoutCustomer(
 async function mappedUserId(
   supabase: SupabaseClient,
   subscription: Stripe.Subscription,
-): Promise<string> {
+): Promise<string | null> {
   const metadataUserId = subscriptionMetadataUserId(subscription);
-  if (metadataUserId) return metadataUserId;
+  if (metadataUserId) return existingUserId(supabase, metadataUserId);
 
   const { data: bySubscription, error: subscriptionError } = await supabase
     .from('subscriptions')
@@ -133,7 +153,9 @@ async function mappedUserId(
     .eq('stripe_subscription_id', subscription.id)
     .maybeSingle();
   if (subscriptionError) throw new Error(subscriptionError.message);
-  if (bySubscription?.user_id) return bySubscription.user_id;
+  if (bySubscription?.user_id) {
+    return existingUserId(supabase, bySubscription.user_id);
+  }
 
   const customerId = stripeObjectId(subscription.customer);
   if (customerId) {
@@ -143,10 +165,10 @@ async function mappedUserId(
       .eq('stripe_customer_id', customerId)
       .maybeSingle();
     if (customerError) throw new Error(customerError.message);
-    if (byCustomer?.user_id) return byCustomer.user_id;
+    if (byCustomer?.user_id) return existingUserId(supabase, byCustomer.user_id);
   }
 
-  throw new Error('Stripe subscription could not be mapped to a ChicMagnolia user.');
+  return null;
 }
 
 async function syncSubscription(
@@ -155,11 +177,22 @@ async function syncSubscription(
   eventCreated: number,
 ) {
   const userId = await mappedUserId(supabase, subscription);
+  if (!userId) return;
+
   const { error } = await supabase.rpc(
     'sync_stripe_subscription',
     buildSubscriptionSync(subscription, userId, eventCreated),
   );
   if (error) throw new Error(error.message);
+}
+
+async function retrieveSubscriptionIfPresent(stripe: Stripe, subscriptionId: string) {
+  try {
+    return await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (error) {
+    if (isStripeResourceMissing(error)) return null;
+    throw error;
+  }
 }
 
 async function processEvent(
@@ -177,8 +210,8 @@ async function processEvent(
     case 'customer.subscription.paused':
     case 'customer.subscription.resumed': {
       const eventSubscription = event.data.object as Stripe.Subscription;
-      const latest = await stripe.subscriptions.retrieve(eventSubscription.id);
-      await syncSubscription(supabase, latest, event.created);
+      const latest = await retrieveSubscriptionIfPresent(stripe, eventSubscription.id);
+      if (latest) await syncSubscription(supabase, latest, event.created);
       return;
     }
 
@@ -192,8 +225,8 @@ async function processEvent(
     case 'invoice.payment_action_required': {
       const subscriptionId = invoiceSubscriptionId(event.data.object as Stripe.Invoice);
       if (!subscriptionId) return;
-      const latest = await stripe.subscriptions.retrieve(subscriptionId);
-      await syncSubscription(supabase, latest, event.created);
+      const latest = await retrieveSubscriptionIfPresent(stripe, subscriptionId);
+      if (latest) await syncSubscription(supabase, latest, event.created);
       return;
     }
 
