@@ -18,6 +18,53 @@ jobs:
       CRON_SECRET: ${{ secrets.CHICMAGNOLIA_CRON_SECRET }}
 
     steps:
+      - name: Verify cron endpoint authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_URL}" ] || [ -z "${CRON_SECRET}" ]; then
+            echo "::warning::Daily monitoring is not configured. Add CHICMAGNOLIA_APP_URL and CHICMAGNOLIA_CRON_SECRET repository secrets."
+            exit 0
+          fi
+
+          endpoint="${APP_URL%/}/api/cron/daily-price-check"
+
+          missing_auth_code=$(curl \
+            --silent \
+            --show-error \
+            --max-time 20 \
+            --output /tmp/missing-auth-response.json \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Content-Type: application/json" \
+            "${endpoint}")
+
+          if [ "${missing_auth_code}" != "401" ]; then
+            cat /tmp/missing-auth-response.json
+            echo "::error::Cron endpoint accepted or mishandled a request without authentication (HTTP ${missing_auth_code})."
+            exit 1
+          fi
+
+          invalid_auth_code=$(curl \
+            --silent \
+            --show-error \
+            --max-time 20 \
+            --output /tmp/invalid-auth-response.json \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Authorization: Bearer definitely-not-the-cron-secret" \
+            --header "Content-Type: application/json" \
+            "${endpoint}")
+
+          if [ "${invalid_auth_code}" != "401" ]; then
+            cat /tmp/invalid-auth-response.json
+            echo "::error::Cron endpoint accepted or mishandled an invalid bearer token (HTTP ${invalid_auth_code})."
+            exit 1
+          fi
+
+          echo "Cron endpoint rejected missing and invalid credentials as expected."
+
       - name: Run due price checks
         shell: bash
         run: |
