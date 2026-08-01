@@ -1,23 +1,22 @@
 import type { MetadataRoute } from 'next';
 
-import { clientEnv } from '@/lib/env/client';
+import { canonicalUrl } from '@/lib/canonical-url';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = clientEnv.NEXT_PUBLIC_APP_URL;
   const lastModified = new Date();
 
   return [
-    { url: new URL('/', baseUrl).toString(), lastModified, priority: 1 },
+    { url: canonicalUrl('/'), lastModified, priority: 1 },
     {
-      url: new URL('/support', baseUrl).toString(),
+      url: canonicalUrl('/support'),
       lastModified,
       priority: 0.5,
     },
     {
-      url: new URL('/privacy', baseUrl).toString(),
+      url: canonicalUrl('/privacy'),
       lastModified,
       priority: 0.4,
     },
-    { url: new URL('/terms', baseUrl).toString(), lastModified, priority: 0.4 },
+    { url: canonicalUrl('/terms'), lastModified, priority: 0.4 },
   ];
 }
