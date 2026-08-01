@@ -9,6 +9,7 @@ updates:
       time: '07:30'
       timezone: Europe/London
     open-pull-requests-limit: 5
+    versioning-strategy: increase
     groups:
       production-dependencies:
         dependency-type: production
@@ -20,8 +21,10 @@ updates:
         update-types:
           - minor
           - patch
-    labels:
-      - dependencies
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
@@ -35,5 +38,7 @@ updates:
       github-actions:
         patterns:
           - '*'
-    labels:
-      - dependencies
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
