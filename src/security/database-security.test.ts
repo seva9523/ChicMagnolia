@@ -84,6 +84,34 @@ describe('database privacy controls', () => {
     );
   });
 
+  it('keeps internal trigger functions private and uses statement-stable RLS identity lookups', () => {
+    const sql = migration('202608010003_harden_database_advisors.sql');
+
+    expect(sql).toMatch(
+      /alter function public\.set_updated_at\(\)[\s\S]*set search_path = pg_catalog/i,
+    );
+
+    for (const functionName of [
+      'set_updated_at',
+      'handle_new_user',
+      'rls_auto_enable',
+    ]) {
+      expect(sql).toMatch(
+        new RegExp(
+          `revoke execute on function public\\.${functionName}\\(\\)[\\s\\S]*?from public, anon, authenticated, service_role`,
+          'i',
+        ),
+      );
+    }
+
+    expect(sql.match(/\(select auth\.uid\(\)\)/gi)?.length ?? 0).toBeGreaterThanOrEqual(
+      12,
+    );
+    expect(sql).toMatch(
+      /create index if not exists support_requests_user_id_idx[\s\S]*on public\.support_requests\(user_id\)/i,
+    );
+  });
+
   it('treats delayed Stripe events for deleted users as a no-op', () => {
     const sql = migration('202608010001_harden_stripe_subscription_sync.sql');
 
