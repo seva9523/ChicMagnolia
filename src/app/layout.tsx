@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 
 import { PrivacySafeAnalytics } from '@/components/privacy-safe-analytics';
-import { clientEnv } from '@/lib/env/client';
+import { CANONICAL_APP_ORIGIN } from '@/lib/canonical-url';
 
 import './globals.css';
 
@@ -17,12 +17,15 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(clientEnv.NEXT_PUBLIC_APP_URL),
+  metadataBase: new URL(CANONICAL_APP_ORIGIN),
   title: {
     default: 'ChicMagnolia',
     template: '%s | ChicMagnolia',
   },
   description: 'Never miss a price drop within your return window.',
+  alternates: {
+    canonical: '/',
+  },
 };
 
 export default function RootLayout({
