@@ -9,6 +9,10 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 
+vi.mock('./actions', () => ({
+  submitSupportRequest: vi.fn(),
+}));
+
 import SupportPage from './page';
 
 describe('Support page', () => {
