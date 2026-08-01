@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import TermsPage from './page';
 
 describe('Terms of service', () => {
-  it('states retailer, billing and consumer-right limitations clearly', () => {
+  it('states retailer, billing, support and consumer-right limitations clearly', () => {
     render(<TermsPage />);
 
     expect(screen.getByRole('heading', { name: 'Terms of service' })).toBeInTheDocument();
@@ -15,5 +15,9 @@ describe('Terms of service', () => {
       screen.getByRole('heading', { name: /Subscription and billing/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Nothing in these terms removes a statutory/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /support form/i })).toHaveAttribute(
+      'href',
+      '/support',
+    );
   });
 });
