@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { LEGAL_CONTACT_PATH } from '@/lib/legal';
 
 export function SiteFooter() {
   return (
@@ -14,12 +14,9 @@ export function SiteFooter() {
           <Link className="hover:text-foreground hover:underline" href="/terms">
             Terms
           </Link>
-          <a
-            className="hover:text-foreground hover:underline"
-            href={`mailto:${LEGAL_CONTACT_EMAIL}`}
-          >
+          <Link className="hover:text-foreground hover:underline" href={LEGAL_CONTACT_PATH}>
             Support
-          </a>
+          </Link>
         </nav>
       </div>
     </footer>
