@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-import { clientEnv } from '@/lib/env/client';
+import { canonicalUrl } from '@/lib/canonical-url';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -17,6 +17,6 @@ export default function robots(): MetadataRoute.Robots {
         '/sign-up',
       ],
     },
-    sitemap: new URL('/sitemap.xml', clientEnv.NEXT_PUBLIC_APP_URL).toString(),
+    sitemap: canonicalUrl('/sitemap.xml'),
   };
 }
