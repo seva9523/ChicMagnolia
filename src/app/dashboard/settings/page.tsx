@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
-import { LEGAL_CONTACT_EMAIL } from '@/lib/legal';
+import { LEGAL_CONTACT_PATH } from '@/lib/legal';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import { deleteAccount } from './actions';
@@ -99,10 +99,11 @@ export default async function SettingsPage({
             </p>
             <p className="text-muted-foreground mt-3 text-sm">
               Billing providers may retain limited historical records where required for
-              accounting, fraud prevention or legal obligations. Questions can be sent to{' '}
-              <a className="text-primary underline" href={`mailto:${LEGAL_CONTACT_EMAIL}`}>
-                {LEGAL_CONTACT_EMAIL}
-              </a>
+              accounting, fraud prevention or legal obligations. Questions can be submitted
+              through the{' '}
+              <Link className="text-primary underline" href={LEGAL_CONTACT_PATH}>
+                support form
+              </Link>
               .
             </p>
 
