@@ -1,0 +1,214 @@
+name: Encrypted database backup
+
+on:
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/encrypted-database-backup.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: encrypted-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+
+    steps:
+      - name: Check backup configuration
+        if: github.event_name != 'pull_request'
+        id: configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_DB_URL}" ] || [ -z "${BACKUP_AGE_RECIPIENT}" ]; then
+            echo "::warning::Encrypted database backups are not configured. Add the SUPABASE_DB_URL repository secret and BACKUP_AGE_RECIPIENT repository variable."
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          case "${BACKUP_AGE_RECIPIENT}" in
+            age1*) ;;
+            *)
+              echo "::error::BACKUP_AGE_RECIPIENT is not a valid native age recipient."
+              exit 1
+              ;;
+          esac
+
+          echo "configured=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Supabase CLI
+        if: github.event_name == 'pull_request' || steps.configuration.outputs.configured == 'true'
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.111.0
+
+      - name: Install age
+        if: github.event_name == 'pull_request' || steps.configuration.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes age
+          age --version
+
+      - name: Validate backup toolchain
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          supabase --version | grep --fixed-strings '2.111.0'
+
+          help_text=$(supabase db dump --help 2>&1)
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--role-only'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--data-only'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--use-copy'
+          printf '%s\n' "${help_text}" | grep --fixed-strings -- '--exclude'
+
+          test_dir=$(mktemp -d)
+          trap 'rm -rf "${test_dir}"' EXIT
+
+          age-keygen -o "${test_dir}/identity.txt"
+          recipient=$(age-keygen -y "${test_dir}/identity.txt")
+
+          printf 'backup-toolchain-check\n' > "${test_dir}/plain.txt"
+
+          age \
+            --recipient "${recipient}" \
+            --output "${test_dir}/plain.txt.age" \
+            "${test_dir}/plain.txt"
+
+          age \
+            --decrypt \
+            --identity "${test_dir}/identity.txt" \
+            --output "${test_dir}/decrypted.txt" \
+            "${test_dir}/plain.txt.age"
+
+          cmp "${test_dir}/plain.txt" "${test_dir}/decrypted.txt"
+          echo "Backup CLI flags and local age encryption round trip passed."
+          echo "No production connection or database dump was attempted."
+
+      - name: Dump and encrypt database
+        if: steps.configuration.outputs.configured == 'true'
+        id: backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          timestamp=$(date -u +'%Y%m%dT%H%M%SZ')
+          workdir="${RUNNER_TEMP}/chicmagnolia-database-backup-${timestamp}"
+          plain_dir="${workdir}/plain"
+          output_dir="${workdir}/output"
+          archive="${workdir}/chicmagnolia-database-${timestamp}.tar.gz"
+
+          mkdir -p "${plain_dir}" "${output_dir}"
+
+          cleanup_plaintext() {
+            rm -rf "${plain_dir}" "${archive}"
+          }
+          trap cleanup_plaintext EXIT
+
+          supabase db dump \
+            --db-url "${SUPABASE_DB_URL}" \
+            --file "${plain_dir}/roles.sql" \
+            --role-only
+
+          supabase db dump \
+            --db-url "${SUPABASE_DB_URL}" \
+            --file "${plain_dir}/schema.sql"
+
+          supabase db dump \
+            --db-url "${SUPABASE_DB_URL}" \
+            --file "${plain_dir}/data.sql" \
+            --use-copy \
+            --data-only \
+            --exclude "storage.buckets_vectors" \
+            --exclude "storage.vector_indexes"
+
+          cli_version=$(supabase --version | head -n 1 | tr -d '\r')
+
+          {
+            echo "generated_at_utc=${timestamp}"
+            echo "source_git_sha=${GITHUB_SHA}"
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "supabase_cli_version=${cli_version}"
+            echo "roles_bytes=$(stat --format='%s' "${plain_dir}/roles.sql")"
+            echo "schema_bytes=$(stat --format='%s' "${plain_dir}/schema.sql")"
+            echo "data_bytes=$(stat --format='%s' "${plain_dir}/data.sql")"
+          } > "${plain_dir}/manifest.txt"
+
+          (
+            cd "${plain_dir}"
+            sha256sum roles.sql schema.sql data.sql manifest.txt > manifest.sha256
+          )
+
+          tar \
+            --create \
+            --gzip \
+            --file "${archive}" \
+            --directory "${plain_dir}" \
+            roles.sql \
+            schema.sql \
+            data.sql \
+            manifest.txt \
+            manifest.sha256
+
+          encrypted_file="${output_dir}/chicmagnolia-database-${timestamp}.tar.gz.age"
+
+          age \
+            --recipient "${BACKUP_AGE_RECIPIENT}" \
+            --output "${encrypted_file}" \
+            "${archive}"
+
+          (
+            cd "${output_dir}"
+            sha256sum "$(basename "${encrypted_file}")" > "$(basename "${encrypted_file}").sha256"
+          )
+
+          echo "artifact-name=chicmagnolia-database-${timestamp}" >> "${GITHUB_OUTPUT}"
+          echo "artifact-path=${output_dir}" >> "${GITHUB_OUTPUT}"
+          echo "encrypted-file=$(basename "${encrypted_file}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload encrypted backup
+        if: steps.configuration.outputs.configured == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.backup.outputs.artifact-name }}
+          path: ${{ steps.backup.outputs.artifact-path }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: false
+
+      - name: Record backup result
+        if: steps.configuration.outputs.configured == 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Encrypted database backup"
+            echo
+            echo "Created and uploaded \`${{ steps.backup.outputs.encrypted-file }}\`."
+            echo "The artifact contains no plaintext SQL and is retained for 14 days."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Remove temporary backup files
+        if: always() && steps.configuration.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "${RUNNER_TEMP}"/chicmagnolia-database-backup-*

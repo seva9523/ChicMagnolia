@@ -11,6 +11,7 @@ Stripe live-mode activation until the legal, operational and support steps are c
       launch.
 - [x] Apply `supabase/migrations/202607310001_create_legal_acceptances.sql`.
 - [x] Apply `supabase/migrations/202608010002_create_support_requests.sql`.
+- [x] Apply `supabase/migrations/202608010003_harden_database_advisors.sql`.
 - [x] Create a fresh account after the legal migration and confirm a `legal_acceptances` row
       is recorded with the current Terms and Privacy versions.
 - [x] Confirm the Privacy and Terms links are visible on the homepage and sign-up form.
@@ -34,6 +35,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [ ] Review Supabase Row Level Security policies from a second non-owner account.
 - [x] Verify the service-role key is never exposed in browser bundles or public environment
       variables.
+- [x] Remove internal trigger functions from the browser-facing RPC surface, set a fixed
+      function search path and clear the targeted Supabase Security Advisor findings.
+- [x] Rewrite user-owned RLS policies to use statement-stable identity lookups and clear the
+      targeted Supabase Performance Advisor warnings.
 - [x] In Supabase Authentication → URL Configuration, set the Site URL to the canonical
       production origin and add these allowed redirect patterns:
   - `http://localhost:3000/**`;
@@ -53,6 +58,8 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] Configure weekly Dependabot updates for npm and GitHub Actions dependencies.
 - [x] Configure CodeQL analysis for JavaScript and TypeScript on pull requests, `main` and a
       weekly schedule.
+- [ ] Enable leaked-password protection in Supabase Authentication settings and confirm the
+      remaining Security Advisor warning clears.
 - [ ] Confirm GitHub secret scanning and push protection settings in the repository Security
       tab.
 - [x] Route private security reports through the monitored support form.
@@ -109,7 +116,14 @@ Stripe live-mode activation until the legal, operational and support steps are c
       HTTPS.
 - [x] Confirm `/api/health`, `/robots.txt` and `/sitemap.xml` return successfully.
 - [x] Confirm Preview and Production use the intended Supabase and Stripe test projects.
-- [ ] Verify Supabase backup and point-in-time recovery options appropriate to the beta.
+- [x] Verify that the current Supabase Free project has no managed daily-backup retention or
+      Point-in-Time Recovery and document the private-beta strategy in `docs/BACKUP.md`.
+- [x] Add a daily backup workflow that creates Supabase-compatible logical dumps, encrypts
+      them before upload and safely exits while backup credentials are unconfigured.
+- [ ] Generate and protect the offline age identity, then configure `SUPABASE_DB_URL` and the
+      public `BACKUP_AGE_RECIPIENT` in GitHub.
+- [ ] Run the first encrypted backup, verify its checksum, decrypt it offline and complete a
+      restore drill into a disposable Supabase project.
 - [x] Record the last known-good Vercel deployment before inviting users.
 - [x] Document application, database, Stripe, Resend and monitoring rollback steps in
       `docs/ROLLBACK.md`.
