@@ -49,7 +49,11 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [ ] Confirm the cron endpoint rejects missing or incorrect bearer tokens in production.
 - [x] Confirm account export and dashboard routes redirect or return 401 when signed out.
 - [x] Check the production security headers.
-- [ ] Enable GitHub dependency and secret scanning for the repository.
+- [x] Configure weekly Dependabot updates for npm and GitHub Actions dependencies.
+- [x] Configure CodeQL analysis for JavaScript and TypeScript on pull requests, `main` and a
+      weekly schedule.
+- [ ] Confirm GitHub secret scanning and push protection settings in the repository Security
+      tab.
 - [x] Route private security reports through the monitored support form.
 
 ## 3. Billing
@@ -80,8 +84,8 @@ Stripe live-mode activation until the legal, operational and support steps are c
       inbox without publishing a personal email address.
 - [x] Confirm notification failure does not discard the stored support request.
 - [x] Test one successful price-drop email and one suppressed duplicate alert.
-- [ ] Prepare short support replies for failed retailer checks, billing access and account
-      deletion.
+- [x] Prepare founder support replies for retailer failures, billing access, account deletion,
+      authentication, privacy requests and security reports in `docs/SUPPORT_PLAYBOOK.md`.
 - [x] Do not include full product-page HTML, credentials or payment data in support tickets.
 
 ## 5. Monitoring and retailer quality
@@ -90,8 +94,8 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] For each retailer, test an available and unavailable saved size where possible.
 - [x] Confirm sale prices are used instead of original, crossed-out or historical prices.
 - [x] Confirm no retailer borrows another colour or size's price or stock.
-- [ ] Trigger the GitHub daily workflow manually and confirm all batches finish without a
-      Vercel timeout after the final support deployment.
+- [ ] Trigger the GitHub daily workflow manually and confirm its authentication preflight and
+      all due batches finish without a Vercel timeout after the operations-hardening merge.
 - [ ] Review Oxylabs and Browserless usage limits and set spend alerts.
 - [x] Define the response: pause the failing adapter, display a clear error, repair the parser
       and add a regression test before re-enabling it.
@@ -104,7 +108,8 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] Confirm Preview and Production use the intended Supabase and Stripe test projects.
 - [ ] Verify Supabase backup and point-in-time recovery options appropriate to the beta.
 - [x] Record the last known-good Vercel deployment before inviting users.
-- [ ] Prepare a written rollback procedure for a broken merge or migration.
+- [x] Document application, database, Stripe, Resend and monitoring rollback steps in
+      `docs/ROLLBACK.md`.
 - [x] Avoid destructive database changes without a tested rollback or export.
 
 ## 7. Cohort launch
