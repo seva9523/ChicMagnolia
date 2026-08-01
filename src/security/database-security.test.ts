@@ -69,7 +69,9 @@ describe('database privacy controls', () => {
     expect(sql).toMatch(/references auth\.users\s*\(id\) on delete set null/i);
     expect(sql).toMatch(/alter table public\.support_requests enable row level security/i);
     expect(sql).not.toMatch(/create policy[^;]+support_requests/i);
-    expect(sql).toMatch(/only the service role can read or mutate the support queue/i);
+    expect(sql).toMatch(
+      /only the service role can read or mutate the[\s\S]*support queue/i,
+    );
   });
 
   it('treats delayed Stripe events for deleted users as a no-op', () => {
