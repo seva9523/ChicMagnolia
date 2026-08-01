@@ -46,7 +46,8 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] Request a password reset from Preview and confirm the email link opens a secure reset
       session on the same initiating origin.
 - [x] Confirm Stripe webhook signature verification rejects an invalid signature.
-- [ ] Confirm the cron endpoint rejects missing or incorrect bearer tokens in production.
+- [x] Confirm the production cron endpoint returns HTTP 401 for both a missing bearer token
+      and an intentionally invalid bearer token.
 - [x] Confirm account export and dashboard routes redirect or return 401 when signed out.
 - [x] Check the production security headers.
 - [x] Configure weekly Dependabot updates for npm and GitHub Actions dependencies.
@@ -94,8 +95,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] For each retailer, test an available and unavailable saved size where possible.
 - [x] Confirm sale prices are used instead of original, crossed-out or historical prices.
 - [x] Confirm no retailer borrows another colour or size's price or stock.
-- [ ] Trigger the GitHub daily workflow manually and confirm its authentication preflight and
-      all due batches finish without a Vercel timeout after the operations-hardening merge.
+- [x] Run the GitHub daily workflow against production and confirm the authentication
+      preflight passes, the authenticated batch returns HTTP 2xx and monitoring completes
+      without a Vercel timeout. The validation run found no purchases due at that moment and
+      ended cleanly with `processed = 0` and `remaining = 0`.
 - [ ] Review Oxylabs and Browserless usage limits and set spend alerts.
 - [x] Define the response: pause the failing adapter, display a clear error, repair the parser
       and add a regression test before re-enabling it.
