@@ -7,9 +7,7 @@ describe('public metadata routes', () => {
   it('publishes the canonical www sitemap from robots.txt', () => {
     const metadata = robots();
 
-    expect(metadata.sitemap).toBe(
-      'https://www.chicmagnolia.com/sitemap.xml',
-    );
+    expect(metadata.sitemap).toBe('https://www.chicmagnolia.com/sitemap.xml');
   });
 
   it('publishes only canonical www URLs in the public sitemap', () => {
