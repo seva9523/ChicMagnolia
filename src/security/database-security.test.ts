@@ -104,9 +104,9 @@ describe('database privacy controls', () => {
       );
     }
 
-    expect(sql.match(/\(select auth\.uid\(\)\)/gi)?.length ?? 0).toBeGreaterThanOrEqual(
-      12,
-    );
+    expect(
+      sql.match(/\(select auth\.uid\(\)\)/gi)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(12);
     expect(sql).toMatch(
       /create index if not exists support_requests_user_id_idx[\s\S]*on public\.support_requests\(user_id\)/i,
     );
