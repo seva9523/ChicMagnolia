@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { LegalPage } from '@/components/legal-page';
 import {
-  LEGAL_CONTACT_EMAIL,
+  LEGAL_CONTACT_PATH,
   LEGAL_LAST_UPDATED,
   LEGAL_OPERATOR_NAME,
   PRIVACY_VERSION,
@@ -28,10 +29,9 @@ export default function PrivacyPage() {
           the United Kingdom.
         </p>
         <p>
-          Privacy questions and rights requests can be sent to{' '}
-          <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. Please do not
-          include passwords, full payment-card details or other unnecessary sensitive
-          information in an email.
+          Privacy questions and rights requests can be submitted through the{' '}
+          <Link href={LEGAL_CONTACT_PATH}>secure support form</Link>. Please do not include
+          passwords, full payment-card details or other unnecessary sensitive information.
         </p>
       </section>
 
@@ -56,6 +56,11 @@ export default function PrivacyPage() {
             store your full card number.
           </li>
           <li>
+            <strong>Support data:</strong> the name, email address, topic and message submitted
+            through the support form, the account identifier when signed in, delivery status,
+            timestamps and the internal reference used to handle the request.
+          </li>
+          <li>
             <strong>Service and security data:</strong> limited technical logs needed to
             operate, secure and troubleshoot the service.
           </li>
@@ -70,10 +75,10 @@ export default function PrivacyPage() {
       <section>
         <h2>3. Where the data comes from</h2>
         <p>
-          Most data is provided directly by you when you create an account, add a purchase
-          or manage billing. Current price and stock information comes from public retailer
-          pages for the product URL you provide. Subscription status comes from Stripe after
-          signed webhook verification.
+          Most data is provided directly by you when you create an account, add a purchase,
+          manage billing or submit the support form. Current price and stock information
+          comes from public retailer pages for the product URL you provide. Subscription
+          status comes from Stripe after signed webhook verification.
         </p>
       </section>
 
@@ -83,13 +88,13 @@ export default function PrivacyPage() {
           <li>
             <strong>To provide the service and perform our contract:</strong> authenticate
             you, store purchases, run price and stock checks, send requested alerts, provide
-            data export and manage the subscription.
+            data export, respond to support requests and manage the subscription.
           </li>
           <li>
             <strong>For legitimate interests:</strong> protect accounts, prevent abuse,
-            diagnose failures, maintain reliability and understand aggregated product use.
-            These activities are limited to what is reasonably necessary for operating the
-            service.
+            diagnose failures, maintain reliability, keep an accountable support record and
+            understand aggregated product use. These activities are limited to what is
+            reasonably necessary for operating the service.
           </li>
           <li>
             <strong>To meet legal obligations:</strong> retain or disclose limited billing,
@@ -106,10 +111,13 @@ export default function PrivacyPage() {
         <h2>5. Service providers and recipients</h2>
         <p>ChicMagnolia uses specialist providers to operate the service:</p>
         <ul>
-          <li>Supabase for authentication and the application database.</li>
+          <li>Supabase for authentication, the application database and support records.</li>
           <li>Vercel for application hosting and privacy-focused web analytics.</li>
           <li>Stripe for Checkout, recurring billing, invoices and the Customer Portal.</li>
-          <li>Resend for transactional price-drop emails.</li>
+          <li>
+            Resend for authentication messages, transactional price-drop emails and support
+            notifications.
+          </li>
           <li>
             Oxylabs and, for selected retailer routes, Browserless to retrieve the public
             retailer page associated with a saved product URL.
@@ -129,8 +137,8 @@ export default function PrivacyPage() {
         <p>
           Some providers may process data outside the United Kingdom. Where this happens,
           ChicMagnolia relies on the provider&apos;s applicable transfer mechanism and
-          contractual or organisational safeguards. Contact us for more information about a
-          particular provider or transfer.
+          contractual or organisational safeguards. Use the support form for more information
+          about a particular provider or transfer.
         </p>
       </section>
 
@@ -153,6 +161,12 @@ export default function PrivacyPage() {
             account exists and is deleted when the account is deleted.
           </li>
           <li>
+            Support, privacy-rights and security-report records are kept for as long as
+            reasonably needed to respond, prevent abuse and demonstrate how the request was
+            handled. Deleting an account removes the account link but does not automatically
+            erase an unresolved support record.
+          </li>
+          <li>
             Failed-request and security records are kept only for as long as reasonably
             needed to troubleshoot, protect the service and establish or defend legal claims.
           </li>
@@ -173,7 +187,8 @@ export default function PrivacyPage() {
           Depending on the circumstances, UK data-protection law may give you rights to
           access, correct, erase, restrict or object to processing and to receive portable
           data. The Settings page provides a JSON download and self-service account deletion.
-          You can also contact us if the self-service tools do not meet your request.
+          You can also submit a request through the support form if the self-service tools do
+          not meet your request.
         </p>
         <p>
           You may complain to the UK Information Commissioner&apos;s Office. Details are
@@ -194,7 +209,7 @@ export default function PrivacyPage() {
           requests deletion of that Stripe customer, which immediately ends active Stripe
           subscriptions and removes saved payment details from future use. Historical records
           may remain where Stripe or ChicMagnolia must retain them for legal, accounting,
-          fraud-prevention or dispute purposes.
+          fraud-prevention, support or dispute purposes.
         </p>
       </section>
 
@@ -204,8 +219,8 @@ export default function PrivacyPage() {
           ChicMagnolia uses authenticated access, database row-level security, server-only
           credentials, signed Stripe webhooks, encrypted HTTPS transport and restricted
           security headers. No internet service can guarantee absolute security, so please
-          use a unique password and contact us promptly if you believe an account has been
-          compromised.
+          use a unique password and submit a security report through the support form if you
+          believe an account has been compromised.
         </p>
       </section>
 

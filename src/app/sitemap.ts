@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: new URL('/', baseUrl).toString(), lastModified, priority: 1 },
+    { url: new URL('/support', baseUrl).toString(), lastModified, priority: 0.5 },
     { url: new URL('/privacy', baseUrl).toString(), lastModified, priority: 0.4 },
     { url: new URL('/terms', baseUrl).toString(), lastModified, priority: 0.4 },
   ];

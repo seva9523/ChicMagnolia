@@ -7,7 +7,8 @@ private beta.
 
 ## Reporting a vulnerability
 
-Please report suspected security issues privately to `support@chicmagnolia.com`.
+Please report suspected security issues privately through the
+[ChicMagnolia support form](https://chicmagnolia.com/support) and select **Security report**.
 
 Include:
 

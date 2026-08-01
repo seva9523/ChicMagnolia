@@ -32,6 +32,7 @@ The repository currently includes:
 - authenticated JSON account export without card data or internal Stripe identifiers
 - self-service account deletion with immediate linked Stripe-customer deletion
 - deletion-safe Stripe webhook processing that does not recreate removed users
+- a public support form backed by a private Supabase queue and monitored Resend automation
 - security headers, private-route robots rules and a public sitemap
 - database privacy regression tests and a private beta launch checklist
 
@@ -57,9 +58,8 @@ public acquisition are manual launch decisions rather than automatic code change
 - a Vercel deployment
 - an Oxylabs Web Scraper API account
 - a verified Resend sender or domain
+- an enabled Resend support-notification automation
 - a Stripe account with test and live products
-- a monitored `support@chicmagnolia.com` mailbox or forwarding rule before inviting beta
-  users
 
 ## Local setup
 
@@ -118,9 +118,10 @@ Apply:
 
 ```text
 supabase/migrations/202607310001_create_legal_acceptances.sql
+supabase/migrations/202608010002_create_support_requests.sql
 ```
 
-The migration creates a read-only-to-users legal acceptance audit table and updates the
+The legal-acceptance migration creates a read-only-to-users audit table and updates the
 trusted new-user trigger. New sign-ups must tick the Terms and Privacy acknowledgement;
 the trigger records the policy versions and server timestamp. Existing beta accounts can
 continue to use the service, but the final public launch process should decide whether they
@@ -144,10 +145,29 @@ foreign-key cascades remove the profile, purchases, price checks, notifications,
 subscription state and legal acceptances. Stripe webhooks arriving after deletion are
 acknowledged without recreating the user.
 
-The public legal copy uses `support@chicmagnolia.com`. Create or forward that mailbox before
-inviting beta users. Replace the operator/controller description when the final legal entity
-or sole-trader disclosure is confirmed. Review the legal copy with a qualified UK adviser
-before public live billing.
+Support requests are intentionally different from user-owned dashboard records. They are
+stored in a service-role-only queue with no browser-facing policy. When an account is
+deleted, an existing support request keeps its reference and loses the user link rather
+than being silently destroyed while it is being handled.
+
+Replace the operator/controller description when the final legal entity or sole-trader
+disclosure is confirmed. Review the legal copy with a qualified UK adviser before public
+live billing.
+
+## Support form setup
+
+The public `/support` page accepts account, billing, retailer, privacy and security reports.
+The server action validates the fields, uses a hidden honeypot, limits an email address to
+three requests in 15 minutes and stores the request before attempting notification.
+
+Notification uses the Resend custom event `support.requested`. The enabled automation sends
+the published support-request template to the monitored founder contact identified by
+`SUPPORT_NOTIFICATION_CONTACT_ID` in `src/services/support-requests.ts`. The contact ID is
+not a credential; API access still requires the server-only `RESEND_API_KEY`.
+
+If Resend notification fails, the request remains in `public.support_requests` with
+`notification_status = 'failed'` so it can be recovered from Supabase rather than being
+lost. Do not expose this table through a browser RLS policy.
 
 ## Stripe subscription setup
 
@@ -158,7 +178,8 @@ annual billing, or additional tiers.
    monthly GBP price of `£4.99`.
 2. Store its `price_...` ID as `STRIPE_PRICE_ID` and the matching test secret key as
    `STRIPE_SECRET_KEY` in Vercel Preview and Production while testing.
-3. Apply `supabase/migrations/202607290002_create_stripe_subscriptions.sql`.
+3. Apply `supabase/migrations/202607290002_create_stripe_subscriptions.sql` and
+   `supabase/migrations/202608010001_harden_stripe_subscription_sync.sql`.
 4. Register the production webhook endpoint:
 
    ```text
@@ -232,6 +253,7 @@ An email is sent only when all of these conditions are true:
 ## Security and privacy controls
 
 - user-owned tables use Supabase Row Level Security;
+- support requests use a private service-role-only queue;
 - server secrets remain in server-only environment variables;
 - Stripe webhooks use the raw body and signature verification;
 - account export is authenticated and marked `private, no-store`;
@@ -239,7 +261,7 @@ An email is sent only when all of these conditions are true:
 - Vercel Web Analytics is used for aggregated, cookie-free product analytics;
 - security headers deny framing, MIME sniffing, camera, microphone and geolocation access;
 - private dashboard, API and authentication routes are excluded from crawler indexing;
-- `SECURITY.md` documents private vulnerability reporting.
+- `SECURITY.md` documents private vulnerability reporting through the monitored form.
 
 The security controls reduce common risks but do not replace periodic review, dependency
 updates, provider configuration and live RLS testing with separate accounts.
@@ -247,7 +269,7 @@ updates, provider configuration and live RLS testing with separate accounts.
 ## Private beta launch
 
 Use [`docs/BETA_LAUNCH_CHECKLIST.md`](docs/BETA_LAUNCH_CHECKLIST.md) before inviting users.
-The checklist covers legal identity, support email, legal acceptance migration, account
+The checklist covers legal identity, support-form delivery, legal acceptance, account
 export and deletion, Stripe test-mode verification, RLS, secrets, email delivery, retailer
 smoke tests, monitoring spend, rollback and the first beta cohort.
 
@@ -280,6 +302,6 @@ src/lib/env/             Runtime environment validation
 src/lib/supabase/        Browser, session and admin Supabase clients
 src/retailers/           Retailer adapters and variant parsers
 src/security/            Static database privacy regression tests
-src/services/            Monitoring, billing, export and account lifecycle logic
+src/services/            Monitoring, billing, support, export and account lifecycle logic
 supabase/migrations/     PostgreSQL schema changes
 ```

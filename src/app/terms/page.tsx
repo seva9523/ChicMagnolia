@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { LegalPage } from '@/components/legal-page';
 import {
-  LEGAL_CONTACT_EMAIL,
+  LEGAL_CONTACT_PATH,
   LEGAL_LAST_UPDATED,
   LEGAL_OPERATOR_NAME,
   TERMS_VERSION,
@@ -25,8 +26,8 @@ export default function TermsPage() {
         <p>
           {LEGAL_OPERATOR_NAME} is a UK private beta service that helps users monitor a saved
           fashion product&apos;s current price and selected-variant stock during a return
-          window. Questions can be sent to{' '}
-          <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.
+          window. Questions can be submitted through the{' '}
+          <Link href={LEGAL_CONTACT_PATH}>support form</Link>.
         </p>
       </section>
 
@@ -172,9 +173,9 @@ export default function TermsPage() {
         <p>
           You may stop tracking products, cancel billing through Stripe or delete the account
           from Settings. Account deletion is designed to remove user-owned application data
-          and immediately stop linked Stripe billing. Some billing, fraud-prevention, security
-          or legal records may remain where retention is required or justified. See the Privacy
-          notice for details.
+          and immediately stop linked Stripe billing. Some billing, fraud-prevention, security,
+          support or legal records may remain where retention is required or justified. See the
+          Privacy notice for details.
         </p>
       </section>
 
@@ -192,8 +193,8 @@ export default function TermsPage() {
         <p>
           These terms are governed by the law of England and Wales. If you are a consumer, you
           may also benefit from mandatory protections and court rights in the part of the UK
-          where you live. We encourage users to contact us first so that concerns can be
-          addressed directly.
+          where you live. We encourage users to submit concerns through the support form first
+          so that they can be addressed directly.
         </p>
       </section>
     </LegalPage>
