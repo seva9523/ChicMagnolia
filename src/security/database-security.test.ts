@@ -84,6 +84,18 @@ describe('database privacy controls', () => {
     );
   });
 
+  it('keeps Stripe webhook processing records inaccessible to browser roles', () => {
+    const sql = migration('202607290002_create_stripe_subscriptions.sql');
+
+    expect(sql).toMatch(
+      /alter table public\.stripe_webhook_events enable row level security/i,
+    );
+    expect(sql).not.toMatch(/create policy[^;]+stripe_webhook_events/i);
+    expect(sql).toMatch(
+      /only the service role may read or write[\s\S]*Stripe webhook processing records/i,
+    );
+  });
+
   it('keeps internal trigger functions private and uses statement-stable RLS identity lookups', () => {
     const sql = migration('202608010003_harden_database_advisors.sql');
 
