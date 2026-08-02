@@ -110,6 +110,8 @@ assert_security_headers() {
     fail 'Permissions-Policy does not deny microphone access.'
   grep -Eq '^permissions-policy: .*geolocation=\(\)' "${normalized}" ||
     fail 'Permissions-Policy does not deny geolocation access.'
+  grep -Eq '^x-robots-tag: noindex, nofollow, noarchive$' "${normalized}" ||
+    fail 'API responses do not carry the required X-Robots-Tag.'
 
   log 'Security headers passed.'
 }
@@ -118,11 +120,17 @@ assert_public_page() {
   local path="$1"
   local marker="$2"
   local name="$3"
+  local expected_title="$4"
+  local expected_canonical="$5"
   local output="${workdir}/${name}.html"
 
   fetch_to_file "${APP_URL}${path}" "${output}"
   grep -Fq "${marker}" "${output}" ||
     fail "${path} did not contain the expected marker: ${marker}"
+  grep -Fq "<title>${expected_title}</title>" "${output}" ||
+    fail "${path} did not contain the expected title: ${expected_title}"
+  grep -Fq "<link rel=\"canonical\" href=\"${expected_canonical}\"/>" "${output}" ||
+    fail "${path} did not contain the expected canonical URL: ${expected_canonical}"
 
   if grep -Fq 'support@chicmagnolia.com' "${output}"; then
     fail "${path} still exposes the retired support mailbox."
@@ -133,6 +141,7 @@ assert_public_page() {
 
 assert_private_route_redirect() {
   local headers_file="${workdir}/dashboard.headers"
+  local normalized="${workdir}/dashboard.headers.normalized"
   local code
   local location
 
@@ -157,6 +166,10 @@ assert_private_route_redirect() {
     *'/login'*) ;;
     *) fail "/dashboard redirected to '${location}', not the login flow." ;;
   esac
+
+  tr -d '\r' < "${headers_file}" | tr '[:upper:]' '[:lower:]' > "${normalized}"
+  grep -Eq '^x-robots-tag: noindex, nofollow, noarchive$' "${normalized}" ||
+    fail 'The private dashboard redirect does not carry the required X-Robots-Tag.'
 
   log 'Private dashboard redirect passed.'
 }
@@ -184,10 +197,30 @@ assert_public_metadata() {
 
 wait_for_health
 assert_security_headers
-assert_public_page '/' 'Catch price drops before your return window closes.' 'home'
-assert_public_page '/privacy' 'Privacy notice' 'privacy'
-assert_public_page '/terms' 'Terms of service' 'terms'
-assert_public_page '/support' 'Send request' 'support'
+assert_public_page \
+  '/' \
+  'Catch price drops before your return window closes.' \
+  'home' \
+  'ChicMagnolia' \
+  "${APP_URL}"
+assert_public_page \
+  '/privacy' \
+  'Privacy notice' \
+  'privacy' \
+  'Privacy notice | ChicMagnolia' \
+  "${APP_URL}/privacy"
+assert_public_page \
+  '/terms' \
+  'Terms of service' \
+  'terms' \
+  'Terms of service | ChicMagnolia' \
+  "${APP_URL}/terms"
+assert_public_page \
+  '/support' \
+  'Send request' \
+  'support' \
+  'Support | ChicMagnolia' \
+  "${APP_URL}/support"
 assert_private_route_redirect
 assert_public_metadata
 
