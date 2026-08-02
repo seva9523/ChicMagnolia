@@ -1,0 +1,124 @@
+name: Backup verification helper
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/backup-helper-test.yml
+      - scripts/verify-encrypted-backup.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-helper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install age
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes age
+          age --version
+
+      - name: Create encrypted fixture
+        id: fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          test_dir=$(mktemp -d)
+          plain_dir="${test_dir}/plain"
+          artifact_dir="${test_dir}/artifact"
+          mkdir -p "${plain_dir}" "${artifact_dir}"
+
+          age-keygen -o "${test_dir}/identity.txt"
+          recipient=$(age-keygen -y "${test_dir}/identity.txt")
+
+          printf 'fixture roles\n' > "${plain_dir}/roles.sql"
+          printf 'fixture schema\n' > "${plain_dir}/schema.sql"
+          printf 'fixture data\n' > "${plain_dir}/data.sql"
+
+          {
+            echo 'generated_at_utc=20260802T000000Z'
+            echo 'source_git_sha=fixture'
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo 'supabase_cli_version=fixture'
+            echo "roles_bytes=$(stat --format='%s' "${plain_dir}/roles.sql")"
+            echo "schema_bytes=$(stat --format='%s' "${plain_dir}/schema.sql")"
+            echo "data_bytes=$(stat --format='%s' "${plain_dir}/data.sql")"
+          } > "${plain_dir}/manifest.txt"
+
+          (
+            cd "${plain_dir}"
+            sha256sum roles.sql schema.sql data.sql manifest.txt > manifest.sha256
+          )
+
+          archive="${test_dir}/chicmagnolia-database-20260802T000000Z.tar.gz"
+          tar \
+            --create \
+            --gzip \
+            --file "${archive}" \
+            --directory "${plain_dir}" \
+            roles.sql \
+            schema.sql \
+            data.sql \
+            manifest.txt \
+            manifest.sha256
+
+          encrypted_file="${artifact_dir}/chicmagnolia-database-20260802T000000Z.tar.gz.age"
+          age \
+            --recipient "${recipient}" \
+            --output "${encrypted_file}" \
+            "${archive}"
+
+          (
+            cd "${artifact_dir}"
+            sha256sum "$(basename "${encrypted_file}")" > \
+              "$(basename "${encrypted_file}").sha256"
+          )
+
+          fixture_zip="${test_dir}/chicmagnolia-database-20260802T000000Z.zip"
+          (
+            cd "${artifact_dir}"
+            zip --quiet "${fixture_zip}" ./*
+          )
+
+          echo "test-dir=${test_dir}" >> "${GITHUB_OUTPUT}"
+          echo "identity=${test_dir}/identity.txt" >> "${GITHUB_OUTPUT}"
+          echo "fixture-zip=${fixture_zip}" >> "${GITHUB_OUTPUT}"
+
+      - name: Verify encrypted fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          output_dir="${{ steps.fixture.outputs.test-dir }}/verified"
+
+          bash scripts/verify-encrypted-backup.sh \
+            "${{ steps.fixture.outputs.fixture-zip }}" \
+            "${{ steps.fixture.outputs.identity }}" \
+            "${output_dir}"
+
+          test -f "${output_dir}/restored-backup/roles.sql"
+          test -f "${output_dir}/restored-backup/schema.sql"
+          test -f "${output_dir}/restored-backup/data.sql"
+          test ! -f "${output_dir}/chicmagnolia-database-backup.tar.gz"
+
+          grep --fixed-strings 'fixture roles' \
+            "${output_dir}/restored-backup/roles.sql"
+          grep --fixed-strings 'fixture schema' \
+            "${output_dir}/restored-backup/schema.sql"
+          grep --fixed-strings 'fixture data' \
+            "${output_dir}/restored-backup/data.sql"
+
+      - name: Remove fixture
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "${{ steps.fixture.outputs.test-dir }}"
