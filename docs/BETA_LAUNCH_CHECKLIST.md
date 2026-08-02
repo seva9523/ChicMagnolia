@@ -5,8 +5,9 @@ Stripe live-mode activation until the legal, operational and support steps are c
 
 ## 1. Legal and privacy
 
-- [ ] Confirm the final operator/controller identity and update the Privacy notice and Terms
-      if ChicMagnolia is incorporated or begins trading under a different legal name.
+- [x] Confirm the current operator/controller identity. The private beta is operated in the
+      United Kingdom by Sevinj Ahmadova as an individual, and the Privacy notice and Terms were
+      updated to version `2026-08-02` without presenting ChicMagnolia as a limited company.
 - [ ] Review the Privacy notice and Terms with a qualified UK adviser before a public paid
       launch.
 - [x] Apply `supabase/migrations/202607310001_create_legal_acceptances.sql`.
@@ -32,7 +33,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [ ] Confirm all production secrets exist only in Vercel or GitHub secret storage.
 - [ ] Rotate any credential that has ever appeared in a terminal recording, screenshot,
       support message or temporary file.
-- [ ] Review Supabase Row Level Security policies from a second non-owner account.
+- [x] Exercise production RLS from a simulated second authenticated identity. The second
+      identity saw zero profile, purchase, price-check, notification, subscription and legal
+      acceptance rows, while the owner identity retained access to its own rows. Cross-user
+      update and delete attempts on tracked purchases affected zero rows.
 - [x] Verify the service-role key is never exposed in browser bundles or public environment
       variables.
 - [x] Remove internal trigger functions from the browser-facing RPC surface, set a fixed
@@ -58,10 +62,9 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] Configure weekly Dependabot updates for npm and GitHub Actions dependencies.
 - [x] Configure CodeQL analysis for JavaScript and TypeScript on pull requests, `main` and a
       weekly schedule.
-- [ ] Enable leaked-password protection in Supabase Authentication settings and confirm the
-      remaining Security Advisor warning clears.
-- [ ] Confirm GitHub secret scanning and push protection settings in the repository Security
-      tab.
+- [ ] Enable leaked-password protection after moving to a Supabase plan that supports it, then
+      confirm the remaining Security Advisor warning clears.
+- [x] Confirm GitHub Secret Protection and Push Protection are enabled for the repository.
 - [x] Route private security reports through the monitored support form.
 
 ## 3. Billing
@@ -120,10 +123,14 @@ Stripe live-mode activation until the legal, operational and support steps are c
       Point-in-Time Recovery and document the private-beta strategy in `docs/BACKUP.md`.
 - [x] Add a daily backup workflow that creates Supabase-compatible logical dumps, encrypts
       them before upload and safely exits while backup credentials are unconfigured.
-- [ ] Generate and protect the offline age identity, then configure `SUPABASE_DB_URL` and the
-      public `BACKUP_AGE_RECIPIENT` in GitHub.
-- [ ] Run the first encrypted backup, verify its checksum, decrypt it offline and complete a
-      restore drill into a disposable Supabase project.
+- [x] Generate and protect the offline `age` identity, confirm its public recipient matches
+      `BACKUP_AGE_RECIPIENT`, and configure `SUPABASE_DB_URL` as a GitHub repository secret.
+- [x] Run the first configured encrypted backup on 2 August 2026. GitHub Actions run
+      `30738550186` created artifact `chicmagnolia-database-20260802T074954Z`; the artifact
+      contains only the encrypted archive and checksum, and the encrypted-file checksum passed.
+- [ ] Decrypt the first artifact locally with the offline identity, verify the inner manifest
+      and complete a restore drill into a disposable Supabase project using
+      `docs/FIRST_RESTORE_DRILL.md`.
 - [x] Record the last known-good Vercel deployment before inviting users.
 - [x] Document application, database, Stripe, Resend and monitoring rollback steps in
       `docs/ROLLBACK.md`.
