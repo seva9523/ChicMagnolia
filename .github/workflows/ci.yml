@@ -42,9 +42,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Print canonical noindex-test formatting
-        run: npx prettier next.config.test.ts
-
       - name: Verify formatting
         run: npm run format:check
 
