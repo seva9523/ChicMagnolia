@@ -1,8 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 
 import { SiteFooter } from '@/components/site-footer';
 import { Button } from '@/components/ui/button';
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export default function Home() {
   return (
