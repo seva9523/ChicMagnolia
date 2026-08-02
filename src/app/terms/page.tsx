@@ -24,7 +24,8 @@ export default function TermsPage() {
       <section>
         <h2>1. About ChicMagnolia</h2>
         <p>
-          {LEGAL_OPERATOR_NAME} is a UK private beta service that helps users
+          ChicMagnolia is operated in the United Kingdom by{' '}
+          {LEGAL_OPERATOR_NAME}. It is a private beta service that helps users
           monitor a saved fashion product&apos;s current price and
           selected-variant stock during a return window. Questions can be
           submitted through the{' '}
