@@ -42,6 +42,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Print canonical pinning-test formatting
+        run: npx prettier src/security/github-actions-pinning.test.ts
+
       - name: Verify formatting
         run: npm run format:check
 
