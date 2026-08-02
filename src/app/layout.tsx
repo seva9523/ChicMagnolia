@@ -18,14 +18,8 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_APP_ORIGIN),
-  title: {
-    default: 'ChicMagnolia',
-    template: '%s | ChicMagnolia',
-  },
+  title: 'ChicMagnolia',
   description: 'Never miss a price drop within your return window.',
-  alternates: {
-    canonical: '/',
-  },
 };
 
 export default function RootLayout({
