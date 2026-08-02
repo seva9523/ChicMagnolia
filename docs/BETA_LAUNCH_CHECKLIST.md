@@ -33,7 +33,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [ ] Confirm all production secrets exist only in Vercel or GitHub secret storage.
 - [ ] Rotate any credential that has ever appeared in a terminal recording, screenshot,
       support message or temporary file.
-- [ ] Review Supabase Row Level Security policies from a second non-owner account.
+- [x] Exercise production RLS using a simulated second authenticated identity. It could read
+      zero profile, purchase, price-check, notification, subscription or legal-acceptance rows,
+      while the owner identity retained access to its own rows. Cross-user update and delete
+      attempts on tracked purchases affected zero rows.
 - [x] Verify the service-role key is never exposed in browser bundles or public environment
       variables.
 - [x] Remove internal trigger functions from the browser-facing RPC surface, set a fixed
@@ -124,9 +127,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
       them before upload and safely exits while backup credentials are unconfigured.
 - [x] Generate and protect the offline age identity, confirm its public recipient matches and
       configure `SUPABASE_DB_URL` plus `BACKUP_AGE_RECIPIENT` in GitHub.
-- [x] Run the first configured encrypted backup and confirm the GitHub workflow succeeds,
-      uploads one encrypted artifact, includes an encrypted-file checksum and uploads no
-      plaintext SQL. Initial configured run: 2 August 2026.
+- [x] Run the first configured encrypted backup. GitHub Actions run `30738550186` created
+      artifact `chicmagnolia-database-20260802T074954Z` from commit
+      `b122587d94ce80c6e7158b9c18f0e1e7d49bc8c6`; it contains only the encrypted archive and
+      checksum, and the encrypted-file checksum passed. Retention expires on 16 August 2026.
 - [x] Add and test `scripts/verify-encrypted-backup.sh` so local checksum, decryption and
       manifest verification follow one repeatable process.
 - [ ] Download the first artifact, verify and decrypt it locally with the offline identity,

@@ -103,15 +103,41 @@ file. Rotate the database password immediately if it is exposed.
 Set this to the public `age1...` recipient produced by the offline key-generation step. Do not
 store the private identity in any GitHub variable or secret.
 
-## First backup validation
+The workflow scopes these values only to the configuration check and real database-dump step.
+Pull-request validation and third-party setup actions do not receive the production database
+connection string.
 
-After both settings exist:
+## First configured backup status
+
+The first configured backup completed successfully on 2 August 2026:
+
+```text
+GitHub Actions run: 30738550186
+Source commit: b122587d94ce80c6e7158b9c18f0e1e7d49bc8c6
+Artifact: chicmagnolia-database-20260802T074954Z
+Retention expiry: 16 August 2026
+```
+
+The artifact contains only:
+
+```text
+chicmagnolia-database-20260802T074954Z.tar.gz.age
+chicmagnolia-database-20260802T074954Z.tar.gz.age.sha256
+```
+
+The encrypted-file checksum was independently verified. No plaintext SQL was uploaded. The
+backup is not yet considered recoverable until the founder completes local decryption, internal
+manifest verification and a disposable Supabase restore drill.
+
+## First backup validation
 
 1. Open **GitHub Actions → Encrypted database backup → Run workflow**.
 2. Confirm all configured steps succeed.
 3. Download the encrypted artifact from the workflow run.
-4. Verify the encrypted file against the accompanying `.sha256` file.
-5. Decrypt and inspect it on the trusted machine described below.
+4. Follow [`LOCAL_BACKUP_VERIFICATION.md`](LOCAL_BACKUP_VERIFICATION.md) and run the repository
+   helper against the downloaded ZIP and offline identity.
+5. Confirm the helper verifies the encrypted checksum, decrypts successfully and validates the
+   internal manifest.
 6. Perform a restore drill into a disposable Supabase project.
 7. Record the date and result in the private operational log. Do not commit user data or the
    decrypted files.
@@ -121,28 +147,26 @@ successful decryption and restore drill.
 
 ## Verify and decrypt an artifact
 
-Place the encrypted archive, its checksum and the offline private identity in a temporary local
-directory. Then run:
+The tested local helper is:
 
-```bash
-sha256sum --check chicmagnolia-database-*.tar.gz.age.sha256
-
-age --decrypt \
-  --identity chicmagnolia-backup-key.txt \
-  --output chicmagnolia-database-backup.tar.gz \
-  chicmagnolia-database-*.tar.gz.age
-
-mkdir restored-backup
-
-tar --extract \
-  --gzip \
-  --file chicmagnolia-database-backup.tar.gz \
-  --directory restored-backup
-
-sha256sum --check restored-backup/manifest.sha256
+```text
+scripts/verify-encrypted-backup.sh
 ```
 
-Open `restored-backup/manifest.txt` and confirm the timestamp, CLI version and source Git commit.
+For the first artifact and the founder's current key location, run this from a local checkout of
+`main`:
+
+```bash
+bash scripts/verify-encrypted-backup.sh \
+  "$HOME/Downloads/chicmagnolia-database-20260802T074954Z.zip" \
+  "$HOME/chicmagnolia-backup-key.txt" \
+  "$HOME/Downloads/chicmagnolia-backup-verified"
+```
+
+The helper verifies the outer checksum, decrypts locally, rejects unsafe or unexpected entries,
+checks the five expected files and verifies the internal manifest checksums. It never prints or
+copies the private identity.
+
 Do not send decrypted SQL files by email or upload them to cloud drives without an approved
 encryption and access-control decision.
 
@@ -162,10 +186,10 @@ export RESTORE_DB_URL='postgresql://postgres.NEW_REF:URL_ENCODED_PASSWORD@POOLER
 psql \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
-  --file restored-backup/roles.sql \
-  --file restored-backup/schema.sql \
+  --file "$HOME/Downloads/chicmagnolia-backup-verified/restored-backup/roles.sql" \
+  --file "$HOME/Downloads/chicmagnolia-backup-verified/restored-backup/schema.sql" \
   --command 'SET session_replication_role = replica' \
-  --file restored-backup/data.sql \
+  --file "$HOME/Downloads/chicmagnolia-backup-verified/restored-backup/data.sql" \
   --dbname "$RESTORE_DB_URL"
 ```
 
