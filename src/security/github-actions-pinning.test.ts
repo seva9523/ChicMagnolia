@@ -26,9 +26,7 @@ describe('GitHub Actions supply-chain pins', () => {
           continue;
         }
 
-        expect(match[2], `${path}: ${line.trim()}`).toMatch(
-          /^[0-9a-f]{40}$/,
-        );
+        expect(match[2], `${path}: ${line.trim()}`).toMatch(/^[0-9a-f]{40}$/);
       }
     }
   });
