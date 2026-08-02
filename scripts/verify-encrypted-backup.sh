@@ -60,8 +60,8 @@ require_command age
 require_command age-keygen
 require_command unzip
 require_command tar
-require_command find
 require_command grep
+require_command basename
 
 [ -f "$artifact_zip" ] || fail "Artifact ZIP not found: $artifact_zip"
 [ -r "$artifact_zip" ] || fail "Artifact ZIP is not readable: $artifact_zip"
@@ -105,25 +105,38 @@ done < <(unzip -Z1 "$artifact_zip")
 
 unzip -q "$artifact_zip" -d "$artifact_dir"
 
-encrypted_count=$(find "$artifact_dir" -maxdepth 1 -type f \
-  -name 'chicmagnolia-database-*.tar.gz.age' | wc -l | tr -d ' ')
-[ "$encrypted_count" -eq 1 ] || fail \
-  "Expected exactly one encrypted database archive, found $encrypted_count."
+shopt -s nullglob dotglob
+artifact_entries=("$artifact_dir"/*)
+shopt -u nullglob dotglob
 
-encrypted_file=$(find "$artifact_dir" -maxdepth 1 -type f \
-  -name 'chicmagnolia-database-*.tar.gz.age' -print)
+[ "${#artifact_entries[@]}" -eq 2 ] || fail \
+  "Expected exactly two files in the artifact, found ${#artifact_entries[@]}."
+
+for artifact_entry in "${artifact_entries[@]}"; do
+  [ -f "$artifact_entry" ] || fail \
+    "Artifact contains a non-file entry: $(basename "$artifact_entry")"
+
+  case "$(basename "$artifact_entry")" in
+    chicmagnolia-database-*.tar.gz.age|chicmagnolia-database-*.tar.gz.age.sha256)
+      ;;
+    *)
+      fail "Artifact contains an unexpected file: $(basename "$artifact_entry")"
+      ;;
+  esac
+done
+
+shopt -s nullglob
+encrypted_files=("$artifact_dir"/chicmagnolia-database-*.tar.gz.age)
+shopt -u nullglob
+
+[ "${#encrypted_files[@]}" -eq 1 ] || fail \
+  "Expected exactly one encrypted database archive, found ${#encrypted_files[@]}."
+
+encrypted_file=${encrypted_files[0]}
 encrypted_name=$(basename "$encrypted_file")
 encrypted_checksum="${encrypted_file}.sha256"
 [ -f "$encrypted_checksum" ] || fail \
   "Encrypted checksum file not found: ${encrypted_name}.sha256"
-
-unexpected_artifact_entry=$(find "$artifact_dir" -mindepth 1 -maxdepth 1 \
-  \( ! -type f -o \
-  \( ! -name 'chicmagnolia-database-*.tar.gz.age' \
-     ! -name 'chicmagnolia-database-*.tar.gz.age.sha256' \) \) \
-  -print -quit)
-[ -z "$unexpected_artifact_entry" ] || fail \
-  "Artifact contains an unexpected entry: $(basename "$unexpected_artifact_entry")"
 
 printf 'Verifying encrypted artifact checksum...\n'
 (
@@ -155,16 +168,25 @@ for expected_file in roles.sql schema.sql data.sql manifest.txt manifest.sha256;
     "Expected file missing from decrypted backup: $expected_file"
 done
 
-unexpected_restored_entry=$(find "$restored_dir" -mindepth 1 -maxdepth 1 \
-  \( ! -type f -o \
-  \( ! -name 'roles.sql' \
-     ! -name 'schema.sql' \
-     ! -name 'data.sql' \
-     ! -name 'manifest.txt' \
-     ! -name 'manifest.sha256' \) \) \
-  -print -quit)
-[ -z "$unexpected_restored_entry" ] || fail \
-  "Decrypted backup contains an unexpected entry: $(basename "$unexpected_restored_entry")"
+shopt -s nullglob dotglob
+restored_entries=("$restored_dir"/*)
+shopt -u nullglob dotglob
+
+[ "${#restored_entries[@]}" -eq 5 ] || fail \
+  "Expected exactly five files in the decrypted backup, found ${#restored_entries[@]}."
+
+for restored_entry in "${restored_entries[@]}"; do
+  [ -f "$restored_entry" ] || fail \
+    "Decrypted backup contains a non-file entry: $(basename "$restored_entry")"
+
+  case "$(basename "$restored_entry")" in
+    roles.sql|schema.sql|data.sql|manifest.txt|manifest.sha256)
+      ;;
+    *)
+      fail "Decrypted backup contains an unexpected file: $(basename "$restored_entry")"
+      ;;
+  esac
+done
 
 printf 'Verifying decrypted manifest checksums...\n'
 (
