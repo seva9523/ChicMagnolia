@@ -33,3 +33,8 @@ will not be treated as abuse.
 
 Secrets must remain in Vercel or GitHub secret storage. `.env`, `.env.local`, build output,
 `node_modules`, credentials and temporary diagnostic files must never be committed.
+
+The `support_requests` and `stripe_webhook_events` tables are deliberately service-role-only.
+They have row-level security enabled and no browser-facing policies. A Supabase Advisor notice
+that these two tables have RLS without policies is therefore expected and must not be resolved
+by adding `anon` or `authenticated` access.
