@@ -9,6 +9,7 @@ on:
       - main
     paths:
       - .github/workflows/encrypted-database-backup.yml
+      - scripts/verify-backup-artifact.sh
 
 permissions:
   contents: read
@@ -27,6 +28,10 @@ jobs:
       BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
 
     steps:
+      - name: Check out repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
       - name: Check backup configuration
         if: github.event_name != 'pull_request'
         id: configuration
@@ -70,6 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          umask 077
 
           supabase --version | grep --fixed-strings '2.111.0'
 
@@ -85,21 +91,65 @@ jobs:
           age-keygen -o "${test_dir}/identity.txt"
           recipient=$(age-keygen -y "${test_dir}/identity.txt")
 
-          printf 'backup-toolchain-check\n' > "${test_dir}/plain.txt"
+          plain_dir="${test_dir}/plain"
+          artifact_dir="${test_dir}/artifact"
+          restored_dir="${test_dir}/restored"
+          archive="${test_dir}/chicmagnolia-database-test.tar.gz"
+          encrypted_file="${artifact_dir}/chicmagnolia-database-test.tar.gz.age"
+          artifact_zip="${test_dir}/chicmagnolia-database-test.zip"
+
+          mkdir -p "${plain_dir}" "${artifact_dir}"
+
+          printf 'test roles\n' > "${plain_dir}/roles.sql"
+          printf 'test schema\n' > "${plain_dir}/schema.sql"
+          printf 'test data\n' > "${plain_dir}/data.sql"
+          {
+            echo 'generated_at_utc=20260802T000000Z'
+            echo 'source_git_sha=0000000000000000000000000000000000000000'
+            echo 'workflow_run_id=0'
+            echo 'supabase_cli_version=2.111.0'
+          } > "${plain_dir}/manifest.txt"
+
+          (
+            cd "${plain_dir}"
+            sha256sum roles.sql schema.sql data.sql manifest.txt > manifest.sha256
+          )
+
+          tar \
+            --create \
+            --gzip \
+            --file "${archive}" \
+            --directory "${plain_dir}" \
+            roles.sql \
+            schema.sql \
+            data.sql \
+            manifest.txt \
+            manifest.sha256
 
           age \
             --recipient "${recipient}" \
-            --output "${test_dir}/plain.txt.age" \
-            "${test_dir}/plain.txt"
+            --output "${encrypted_file}" \
+            "${archive}"
 
-          age \
-            --decrypt \
-            --identity "${test_dir}/identity.txt" \
-            --output "${test_dir}/decrypted.txt" \
-            "${test_dir}/plain.txt.age"
+          (
+            cd "${artifact_dir}"
+            sha256sum "$(basename "${encrypted_file}")" > "$(basename "${encrypted_file}").sha256"
+            zip -q "${artifact_zip}" \
+              "$(basename "${encrypted_file}")" \
+              "$(basename "${encrypted_file}").sha256"
+          )
 
-          cmp "${test_dir}/plain.txt" "${test_dir}/decrypted.txt"
-          echo "Backup CLI flags and local age encryption round trip passed."
+          bash scripts/verify-backup-artifact.sh \
+            "${artifact_zip}" \
+            "${test_dir}/identity.txt" \
+            "${restored_dir}"
+
+          cmp "${plain_dir}/roles.sql" "${restored_dir}/roles.sql"
+          cmp "${plain_dir}/schema.sql" "${restored_dir}/schema.sql"
+          cmp "${plain_dir}/data.sql" "${restored_dir}/data.sql"
+          cmp "${plain_dir}/manifest.txt" "${restored_dir}/manifest.txt"
+
+          echo "Backup CLI flags and full encrypted-artifact verification round trip passed."
           echo "No production connection or database dump was attempted."
 
       - name: Dump and encrypt database
