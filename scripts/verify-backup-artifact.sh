@@ -154,9 +154,12 @@ for required_file in "${required_files[@]}"; do
   [[ -f "${output_dir}/${required_file}" ]] || fail "Required backup file is missing: $required_file"
 done
 
-unexpected_extracted=$(find "$output_dir" -mindepth 1 -maxdepth 1 \
-  ! -type f \
-  -o -type f \
+unexpected_type=$(find "$output_dir" -mindepth 1 -maxdepth 1 ! -type f -print -quit)
+if [[ -n "$unexpected_type" ]]; then
+  fail "Decrypted archive contains a non-file entry: $(basename "$unexpected_type")"
+fi
+
+unexpected_name=$(find "$output_dir" -mindepth 1 -maxdepth 1 -type f \
   ! -name 'roles.sql' \
   ! -name 'schema.sql' \
   ! -name 'data.sql' \
@@ -164,8 +167,8 @@ unexpected_extracted=$(find "$output_dir" -mindepth 1 -maxdepth 1 \
   ! -name 'manifest.sha256' \
   -print -quit)
 
-if [[ -n "$unexpected_extracted" ]]; then
-  fail "Decrypted archive contains an unexpected entry: $(basename "$unexpected_extracted")"
+if [[ -n "$unexpected_name" ]]; then
+  fail "Decrypted archive contains an unexpected file: $(basename "$unexpected_name")"
 fi
 
 printf 'Verifying decrypted backup manifest...\n'
