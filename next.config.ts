@@ -16,6 +16,23 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
 ];
 
+const noIndexHeaders = [
+  {
+    key: 'X-Robots-Tag',
+    value: 'noindex, nofollow, noarchive',
+  },
+];
+
+const privateRouteSources = [
+  '/api/:path*',
+  '/auth/:path*',
+  '/dashboard/:path*',
+  '/forgot-password',
+  '/login',
+  '/reset-password',
+  '/sign-up',
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   async headers() {
@@ -24,6 +41,10 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      ...privateRouteSources.map((source) => ({
+        source,
+        headers: noIndexHeaders,
+      })),
     ];
   },
 };
