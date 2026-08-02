@@ -21,6 +21,15 @@
 # vercel
 .vercel
 
+# encrypted database backup and restore material
+chicmagnolia-backup-key.txt
+chicmagnolia-database-*.zip
+chicmagnolia-database-*.tar.gz*
+chicmagnolia-restore-drill*/
+chicmagnolia-backup-verified*/
+restored-backup/
+encrypted-artifact/
+
 # misc
 .DS_Store
 *.pem
