@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import nextConfig from './next.config';
 
-function headerMap(
-  headers: Array<{ key: string; value: string }> | undefined,
-) {
+function headerMap(headers: Array<{ key: string; value: string }> | undefined) {
   return Object.fromEntries(
     (headers ?? []).map(({ key, value }) => [key, value]),
   );
