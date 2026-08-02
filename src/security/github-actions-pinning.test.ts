@@ -26,15 +26,15 @@ describe('GitHub Actions supply-chain pins', () => {
           continue;
         }
 
-        expect(match[2], `${path}: ${line.trim()}`).toMatch(/^[0-9a-f]{40}$/);
+        expect(match[2], `${path}: ${line.trim()}`).toMatch(
+          /^[0-9a-f]{40}$/,
+        );
       }
     }
   });
 
   it('uses the validated Node 24 action releases', () => {
-    const allWorkflows = workflows
-      .map(({ content }) => content)
-      .join('\n');
+    const allWorkflows = workflows.map(({ content }) => content).join('\n');
 
     expect(allWorkflows).toContain(
       'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
@@ -48,9 +48,7 @@ describe('GitHub Actions supply-chain pins', () => {
   });
 
   it('does not retain deprecated Node 20 action releases', () => {
-    const allWorkflows = workflows
-      .map(({ content }) => content)
-      .join('\n');
+    const allWorkflows = workflows.map(({ content }) => content).join('\n');
 
     expect(allWorkflows).not.toContain(
       'actions/checkout@11d5960a326750d5838078e36cf38b85af677262',
