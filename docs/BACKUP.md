@@ -103,46 +103,56 @@ file. Rotate the database password immediately if it is exposed.
 Set this to the public `age1...` recipient produced by the offline key-generation step. Do not
 store the private identity in any GitHub variable or secret.
 
+## First configured backup status
+
+The first configured backup completed successfully on 2 August 2026:
+
+```text
+Workflow run: 30738550186
+Source commit: b122587d94ce80c6e7158b9c18f0e1e7d49bc8c6
+Artifact: chicmagnolia-database-20260802T074954Z
+Retention expiry: 16 August 2026
+```
+
+The downloaded artifact was inspected independently. It contains only the `.tar.gz.age` file and
+its `.sha256` file; no plaintext SQL was uploaded. The encrypted-file checksum passed. Local
+decryption, inner-manifest verification and the disposable restore drill remain required before
+the backup is considered fully usable.
+
 ## First backup validation
 
-After both settings exist:
+After both repository settings exist:
 
 1. Open **GitHub Actions → Encrypted database backup → Run workflow**.
 2. Confirm all configured steps succeed.
 3. Download the encrypted artifact from the workflow run.
-4. Verify the encrypted file against the accompanying `.sha256` file.
-5. Decrypt and inspect it on the trusted machine described below.
-6. Perform a restore drill into a disposable Supabase project.
-7. Record the date and result in the private operational log. Do not commit user data or the
+4. Verify and decrypt it locally with `scripts/verify-backup-artifact.sh`.
+5. Perform a restore drill into a disposable Supabase project.
+6. Record the date and result in the private operational log. Do not commit user data or the
    decrypted files.
 
 A successful workflow run alone is not enough. A backup is considered usable only after a
 successful decryption and restore drill.
 
+The exact founder commands for the first artifact are in
+[`FIRST_RESTORE_DRILL.md`](FIRST_RESTORE_DRILL.md).
+
 ## Verify and decrypt an artifact
 
-Place the encrypted archive, its checksum and the offline private identity in a temporary local
-directory. Then run:
+The repository helper uses `$HOME/chicmagnolia-backup-key.txt` by default and writes verified
+files outside the repository:
 
 ```bash
-sha256sum --check chicmagnolia-database-*.tar.gz.age.sha256
-
-age --decrypt \
-  --identity chicmagnolia-backup-key.txt \
-  --output chicmagnolia-database-backup.tar.gz \
-  chicmagnolia-database-*.tar.gz.age
-
-mkdir restored-backup
-
-tar --extract \
-  --gzip \
-  --file chicmagnolia-database-backup.tar.gz \
-  --directory restored-backup
-
-sha256sum --check restored-backup/manifest.sha256
+bash scripts/verify-backup-artifact.sh \
+  "$HOME/Downloads/chicmagnolia-database-20260802T074954Z.zip" \
+  "$HOME/chicmagnolia-backup-key.txt" \
+  "$HOME/chicmagnolia-restore-drill-20260802"
 ```
 
-Open `restored-backup/manifest.txt` and confirm the timestamp, CLI version and source Git commit.
+The helper verifies the outer checksum, decrypts the archive, rejects unsafe paths and unexpected
+entries, checks that the five expected backup files exist, verifies the inner manifest checksums
+and prints only non-sensitive manifest metadata. It never prints the age identity or SQL content.
+
 Do not send decrypted SQL files by email or upload them to cloud drives without an approved
 encryption and access-control decision.
 
@@ -162,10 +172,10 @@ export RESTORE_DB_URL='postgresql://postgres.NEW_REF:URL_ENCODED_PASSWORD@POOLER
 psql \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
-  --file restored-backup/roles.sql \
-  --file restored-backup/schema.sql \
+  --file "$HOME/chicmagnolia-restore-drill-20260802/roles.sql" \
+  --file "$HOME/chicmagnolia-restore-drill-20260802/schema.sql" \
   --command 'SET session_replication_role = replica' \
-  --file restored-backup/data.sql \
+  --file "$HOME/chicmagnolia-restore-drill-20260802/data.sql" \
   --dbname "$RESTORE_DB_URL"
 ```
 
