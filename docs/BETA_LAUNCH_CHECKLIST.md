@@ -5,8 +5,9 @@ Stripe live-mode activation until the legal, operational and support steps are c
 
 ## 1. Legal and privacy
 
-- [ ] Confirm the final operator/controller identity and update the Privacy notice and Terms
-      if ChicMagnolia is incorporated or begins trading under a different legal name.
+- [x] Confirm the current private-beta operator and data controller as Sevinj Ahmadova and
+      identify her in the Privacy notice and Terms. Revisit this immediately if ChicMagnolia is
+      incorporated or begins trading under a different legal identity.
 - [ ] Review the Privacy notice and Terms with a qualified UK adviser before a public paid
       launch.
 - [x] Apply `supabase/migrations/202607310001_create_legal_acceptances.sql`.
@@ -59,9 +60,10 @@ Stripe live-mode activation until the legal, operational and support steps are c
 - [x] Configure CodeQL analysis for JavaScript and TypeScript on pull requests, `main` and a
       weekly schedule.
 - [ ] Enable leaked-password protection in Supabase Authentication settings and confirm the
-      remaining Security Advisor warning clears.
-- [ ] Confirm GitHub secret scanning and push protection settings in the repository Security
-      tab.
+      remaining Security Advisor warning clears, or formally accept the limitation while the
+      project remains on the Free plan.
+- [x] Confirm GitHub secret scanning and push protection are enabled in the repository
+      Security settings.
 - [x] Route private security reports through the monitored support form.
 
 ## 3. Billing
@@ -120,10 +122,15 @@ Stripe live-mode activation until the legal, operational and support steps are c
       Point-in-Time Recovery and document the private-beta strategy in `docs/BACKUP.md`.
 - [x] Add a daily backup workflow that creates Supabase-compatible logical dumps, encrypts
       them before upload and safely exits while backup credentials are unconfigured.
-- [ ] Generate and protect the offline age identity, then configure `SUPABASE_DB_URL` and the
-      public `BACKUP_AGE_RECIPIENT` in GitHub.
-- [ ] Run the first encrypted backup, verify its checksum, decrypt it offline and complete a
-      restore drill into a disposable Supabase project.
+- [x] Generate and protect the offline age identity, confirm its public recipient matches and
+      configure `SUPABASE_DB_URL` plus `BACKUP_AGE_RECIPIENT` in GitHub.
+- [x] Run the first configured encrypted backup and confirm the GitHub workflow succeeds,
+      uploads one encrypted artifact, includes an encrypted-file checksum and uploads no
+      plaintext SQL. Initial configured run: 2 August 2026.
+- [x] Add and test `scripts/verify-encrypted-backup.sh` so local checksum, decryption and
+      manifest verification follow one repeatable process.
+- [ ] Download the first artifact, verify and decrypt it locally with the offline identity,
+      then complete a restore drill into a disposable Supabase project.
 - [x] Record the last known-good Vercel deployment before inviting users.
 - [x] Document application, database, Stripe, Resend and monitoring rollback steps in
       `docs/ROLLBACK.md`.
