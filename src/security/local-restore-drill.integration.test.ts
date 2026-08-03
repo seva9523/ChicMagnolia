@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
@@ -11,7 +12,6 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -75,10 +75,7 @@ describe('local restore drill command flow', () => {
       'data.sql',
       'manifest.txt',
     ]
-      .map(
-        (name) =>
-          `${sha256(join(backupDirectory, name))}  ${name}`,
-      )
+      .map((name) => `${sha256(join(backupDirectory, name))}  ${name}`)
       .join('\n');
     writeFileSync(
       join(backupDirectory, 'manifest.sha256'),
@@ -120,7 +117,7 @@ cat >/dev/null
 cat <<'EOF'
 restore_verified_at_utc=2026-08-03T14:30:00Z
 postgres_server_version=17.6
-uth_users=1
+auth_users=1
 profiles=1
 tracked_purchases=0
 price_checks=0
@@ -156,7 +153,9 @@ EOF
     );
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
-    expect(result.stdout).toContain('Local restore drill completed successfully.');
+    expect(result.stdout).toContain(
+      'Local restore drill completed successfully.',
+    );
 
     const reports = readdirSync(reportDirectory);
     expect(reports).toHaveLength(1);
