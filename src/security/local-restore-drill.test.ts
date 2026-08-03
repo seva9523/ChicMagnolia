@@ -24,9 +24,17 @@ describe('zero-cost local restore drill', () => {
     expect(script).toContain('docker network create');
     expect(script).toContain('docker network inspect "$network_id"');
     expect(script).toContain('[ "$network_binding" = \'127.0.0.1\' ]');
-    expect(script).toContain('supabase --network-id "$network_id" db start');
+    expect(script).toContain('--network-id "$network_id"');
     expect(script).toContain('docker network rm "$network_id"');
     expect(script).toContain("SELECT 'database_host_binding=127.0.0.1'");
+  });
+
+  it('keeps all Supabase CLI state inside the temporary workdir', () => {
+    expect(script).toContain('supabase --workdir "$workdir" init');
+    expect(script.match(/--workdir "\$workdir"/g)?.length).toBeGreaterThanOrEqual(
+      3,
+    );
+    expect(script).not.toContain('SUPABASE_WORKDIR=');
   });
 
   it('uses the official single-transaction Supabase restore sequence', () => {
@@ -34,9 +42,18 @@ describe('zero-cost local restore drill', () => {
     expect(script).toContain('--single-transaction');
     expect(script).toContain('--variable ON_ERROR_STOP=1');
     expect(script).toContain('SET session_replication_role = replica');
-    expect(script).toContain('--file "$backup_dir/roles.sql"');
+    expect(script).toContain('--file "$roles_restore_file"');
     expect(script).toContain('--file "$backup_dir/schema.sql"');
     expect(script).toContain('--file "$backup_dir/data.sql"');
+  });
+
+  it('removes only hosted log_min_messages role settings from a temporary copy', () => {
+    expect(script).toContain('prepare_roles_restore_file');
+    expect(script).toContain('sets_log_min_messages');
+    expect(script).toContain('roles.restore.sql');
+    expect(script).toContain('roles_compatibility_statements_skipped');
+    expect(script).not.toContain('sed -i');
+    expect(script).not.toContain('rm "$backup_dir/roles.sql"');
   });
 
   it('verifies tables, RLS and service-role-only controls after restore', () => {
@@ -80,6 +97,7 @@ describe('zero-cost local restore drill', () => {
     expect(runbook).toContain(
       'com.docker.network.bridge.host_binding_ipv4=127.0.0.1',
     );
+    expect(runbook).toContain('log_min_messages');
     expect(runbook).toContain('must never be exposed to the internet');
     expect(runbook).toContain('scripts/restore-backup-locally.sh');
   });
