@@ -13,7 +13,8 @@ describe('zero-cost local restore drill', () => {
     );
     expect(script).not.toContain('RESTORE_DB_URL');
     expect(script).not.toContain('SUPABASE_DB_URL');
-    expect(script).not.toMatch(/--dbname\s+["']?\$[A-Z_]*URL/i);
+    expect(script.match(/--dbname/g)).toHaveLength(2);
+    expect(script.match(/--dbname "\$local_db_url"/g)).toHaveLength(2);
   });
 
   it('uses the official single-transaction Supabase restore sequence', () => {
