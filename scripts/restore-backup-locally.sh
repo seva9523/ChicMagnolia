@@ -69,6 +69,20 @@ check_sha256() {
   fi
 }
 
+port_in_use() {
+  if command -v nc >/dev/null 2>&1; then
+    nc -z 127.0.0.1 54322 >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:54322 -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
 if [ "${1:-}" = '-h' ] || [ "${1:-}" = '--help' ]; then
   usage
   exit 0
@@ -89,16 +103,33 @@ local_db_url='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 [ "$keep_local" = '0' ] || [ "$keep_local" = '1' ] || fail \
   'KEEP_LOCAL_RESTORE must be 0 or 1.'
 
+case "$postgres_version" in
+  *[!0-9A-Za-z._-]*|'')
+    fail 'CHICMAGNOLIA_POSTGRES_VERSION contains unsupported characters.'
+    ;;
+esac
+
 for required_file in roles.sql schema.sql data.sql manifest.txt manifest.sha256; do
   [ -f "$backup_dir/$required_file" ] || fail \
     "Expected backup file missing: $required_file"
+done
+
+for required_key in \
+  generated_at_utc \
+  source_git_sha \
+  workflow_run_id \
+  supabase_cli_version \
+  roles_bytes \
+  schema_bytes \
+  data_bytes; do
+  grep -q "^${required_key}=" "$backup_dir/manifest.txt" || fail \
+    "Manifest key missing: $required_key"
 done
 
 require_command docker
 require_command supabase
 require_command grep
 require_command awk
-require_command sed
 require_command mktemp
 require_command date
 
@@ -108,7 +139,7 @@ psql_bin=$(resolve_psql) || fail \
 docker info >/dev/null 2>&1 || fail \
   'Docker is installed but is not running. Start Docker Desktop or another compatible runtime.'
 
-if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 54322 >/dev/null 2>&1; then
+if port_in_use; then
   fail 'Local port 54322 is already in use. Stop the existing local Supabase database first.'
 fi
 
@@ -125,15 +156,22 @@ completed=false
 
 cleanup() {
   local status=$?
+  local cleanup_failed=false
   set +e
 
   if [ "$started" = true ] && [ "$keep_local" != '1' ]; then
-    SUPABASE_WORKDIR="$workdir" supabase stop --no-backup >/dev/null 2>&1
+    if ! SUPABASE_WORKDIR="$workdir" supabase stop --no-backup >/dev/null 2>&1; then
+      cleanup_failed=true
+      printf '\nWARNING: Automatic local Supabase cleanup failed.\n' >&2
+      printf 'Run these commands manually before deleting the workdir:\n' >&2
+      printf '  SUPABASE_WORKDIR=%q supabase stop --no-backup\n' "$workdir" >&2
+      printf '  rm -rf %q\n' "$workdir" >&2
+    fi
   fi
 
-  if [ "$keep_local" != '1' ]; then
+  if [ "$keep_local" != '1' ] && [ "$cleanup_failed" = false ]; then
     rm -rf "$workdir"
-  elif [ "$started" = true ]; then
+  elif [ "$keep_local" = '1' ] && [ "$started" = true ]; then
     printf '\nTemporary local restore was kept intentionally.\n'
     printf 'Workdir: %s\n' "$workdir"
     printf 'Database: %s\n' "$local_db_url"
@@ -142,25 +180,36 @@ cleanup() {
     printf '  rm -rf %q\n' "$workdir"
   fi
 
-  if [ "$status" -ne 0 ] && [ "$completed" != true ]; then
-    printf 'Local restore drill failed; the temporary database was cleaned up.\n' >&2
+  if [ "$cleanup_failed" = true ] && [ "$status" -eq 0 ]; then
+    status=1
   fi
 
+  if [ "$status" -ne 0 ] && [ "$completed" != true ]; then
+    if [ "$cleanup_failed" = false ] && [ "$keep_local" != '1' ]; then
+      printf 'Local restore drill failed; the temporary database was cleaned up.\n' >&2
+    else
+      printf 'Local restore drill failed; review the retained local workdir.\n' >&2
+    fi
+  fi
+
+  trap - EXIT
   exit "$status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 printf 'Initializing an isolated local Supabase workdir...\n'
-SUPABASE_WORKDIR="$workdir" supabase init >/dev/null
+printf 'n\n' | SUPABASE_WORKDIR="$workdir" supabase init >/dev/null
 mkdir -p "$workdir/supabase/.temp"
 printf '%s\n' "$postgres_version" > "$workdir/supabase/.temp/postgres-version"
 
 printf 'Starting local Supabase Postgres %s...\n' "$postgres_version"
-SUPABASE_WORKDIR="$workdir" supabase db start
 started=true
+SUPABASE_WORKDIR="$workdir" supabase db start
 
 printf 'Restoring roles, schema and data into the loopback-only database...\n'
-"$psql_bin" \
+PGCONNECT_TIMEOUT=10 "$psql_bin" \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
   --file "$backup_dir/roles.sql" \
@@ -171,7 +220,7 @@ printf 'Restoring roles, schema and data into the loopback-only database...\n'
   >/dev/null
 
 printf 'Verifying restored objects, RLS and service-role-only queues...\n'
-"$psql_bin" \
+PGCONNECT_TIMEOUT=10 "$psql_bin" \
   --variable ON_ERROR_STOP=1 \
   --tuples-only \
   --no-align \
