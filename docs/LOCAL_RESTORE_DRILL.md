@@ -23,6 +23,9 @@ also creates a unique Docker bridge network with
 `com.docker.network.bridge.host_binding_ipv4=127.0.0.1`, verifies that option before starting
 Postgres, passes the network explicitly to the Supabase CLI and removes the network afterward.
 
+Every Supabase CLI command receives an explicit temporary `--workdir`. The helper therefore does
+not initialize `supabase/config.toml` or other local CLI state inside the ChicMagnolia repository.
+
 ## Prerequisites on macOS
 
 Install and start one Docker-compatible runtime supported by Supabase, such as Docker Desktop,
@@ -61,13 +64,34 @@ manifest.sha256
 The directory contains plaintext production data. Keep it local and do not upload, email or
 commit it.
 
+## Hosted role settings and local compatibility
+
+A hosted Supabase role dump can contain role-level `log_min_messages` configuration that the
+restricted local `postgres` role is not allowed to apply to another managed role. The local
+Supabase stack already supplies its own logging configuration, and this setting does not contain
+application schema or user data.
+
+The helper therefore creates a private temporary copy of `roles.sql` and removes only statements
+matching an `ALTER ROLE` or `ALTER USER` operation that sets `log_min_messages`. It does not edit
+the verified backup. The original role dump remains protected by `manifest.sha256`, and every
+other role statement is passed to `psql` unchanged.
+
+The number of omitted compatibility statements is recorded as:
+
+```text
+roles_compatibility_statements_skipped=N
+```
+
+A different permission error is not ignored. The restore stops, rolls back and cleans up so the
+new incompatibility can be reviewed explicitly.
+
 ## Run the drill
 
 From a current checkout of `main`:
 
 ```bash
 bash scripts/restore-backup-locally.sh \
-  "$HOME/Downloads/chicmagnolia-backup-verified-20260803-140329/restored-backup"
+  "$HOME/Downloads/chicmagnolia-backup-verified-20260803-185443/restored-backup"
 ```
 
 The helper:
@@ -75,16 +99,17 @@ The helper:
 1. rechecks the internal manifest checksums;
 2. refuses to continue when Docker, Supabase CLI or `psql` is unavailable;
 3. refuses to use local port `54322` when another process already owns it;
-4. initializes a unique temporary Supabase work directory;
-5. creates and verifies a dedicated Docker network whose host binding is `127.0.0.1`;
-6. starts only local Supabase Postgres on that network, matching the first backup's Postgres release by default;
-7. restores roles, schema and data in one transaction with `ON_ERROR_STOP=1`;
-8. verifies all expected ChicMagnolia tables exist;
-9. verifies RLS is enabled on personal-data and internal tables;
-10. verifies `support_requests` and `stripe_webhook_events` have no browser-facing policies;
-11. verifies internal database functions are not executable by `anon` or `authenticated`;
-12. records only non-sensitive row counts and recovery metadata in a local report;
-13. destroys the temporary database, Docker network and work directory automatically.
+4. creates a temporary role-restore copy that omits only hosted `log_min_messages` role settings;
+5. initializes a unique temporary Supabase work directory using the explicit CLI `--workdir` flag;
+6. creates and verifies a dedicated Docker network whose host binding is `127.0.0.1`;
+7. starts only local Supabase Postgres on that network, matching the first backup's Postgres release by default;
+8. restores roles, schema and data in one transaction with `ON_ERROR_STOP=1`;
+9. verifies all expected ChicMagnolia tables exist;
+10. verifies RLS is enabled on personal-data and internal tables;
+11. verifies `support_requests` and `stripe_webhook_events` have no browser-facing policies;
+12. verifies internal database functions are not executable by `anon` or `authenticated`;
+13. records only non-sensitive row counts, compatibility counts and recovery metadata in a local report;
+14. destroys the temporary database, Docker network and work directory automatically.
 
 A successful run ends with:
 
@@ -100,8 +125,21 @@ $HOME/ChicMagnolia-restore-reports/
 ```
 
 It contains counts and technical verification results, not row contents, credentials or SQL. It
-also records `database_host_binding=127.0.0.1` so the recovery evidence includes the network
-isolation used during the drill.
+also records `database_host_binding=127.0.0.1` and the role compatibility statement count so the
+recovery evidence includes both network isolation and any narrowly scoped local normalization.
+
+## Clean up stale repository-local CLI files
+
+An older version of the helper could leave these untracked files in a checkout:
+
+```text
+supabase/.gitignore
+supabase/config.toml
+```
+
+Before running the current helper, use `git status --short`. Delete those two paths only when Git
+shows them as untracked and there are no other unexpected changes. The current helper uses
+`--workdir` explicitly and does not recreate them.
 
 ## Keep the temporary restore for inspection
 
