@@ -235,9 +235,7 @@ EOF
     expect(startCall).toBeTruthy();
     const networkId = startCall?.split('|')[1];
     expect(networkId).toMatch(/^chicmagnolia-restore-/);
-    expect(callLines).toContain(
-      `${workdir}|${networkId}|stop --no-backup`,
-    );
+    expect(callLines).toContain(`${workdir}|${networkId}|stop --no-backup`);
 
     const dockerCalls = readFileSync(dockerLog, 'utf8');
     expect(dockerCalls).toContain(
