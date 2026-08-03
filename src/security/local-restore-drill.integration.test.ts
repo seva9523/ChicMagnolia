@@ -230,7 +230,9 @@ EOF
     const workdir = initCall?.split('|')[0];
     expect(workdir).toBeTruthy();
     if (!workdir) {
-      throw new Error('Expected the helper to pass an explicit Supabase workdir.');
+      throw new Error(
+        'Expected the helper to pass an explicit Supabase workdir.',
+      );
     }
     expect(workdir).not.toBe(process.cwd());
 
@@ -239,7 +241,9 @@ EOF
     const networkId = startCall?.split('|')[1];
     expect(networkId).toMatch(/^chicmagnolia-restore-/);
     if (!networkId) {
-      throw new Error('Expected the helper to pass a restore Docker network.');
+      throw new Error(
+        'Expected the helper to pass a restore Docker network.',
+      );
     }
     expect(callLines).toContain(`${workdir}|${networkId}|stop --no-backup`);
 
