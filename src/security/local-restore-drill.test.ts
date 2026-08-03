@@ -20,7 +20,7 @@ describe('zero-cost local restore drill', () => {
     expect(script).toContain('supabase db start');
     expect(script).toContain('--single-transaction');
     expect(script).toContain('--variable ON_ERROR_STOP=1');
-    expect(script).toContain("SET session_replication_role = replica");
+    expect(script).toContain('SET session_replication_role = replica');
     expect(script).toContain('--file "$backup_dir/roles.sql"');
     expect(script).toContain('--file "$backup_dir/schema.sql"');
     expect(script).toContain('--file "$backup_dir/data.sql"');
@@ -60,13 +60,10 @@ describe('zero-cost local restore drill', () => {
     expect(gitignore).toContain('restored-backup/');
   });
 
-  it(
-    'documents that the drill is local, free of hosted-project creation and not production ready',
-    () => {
-      expect(runbook).toContain('creates no hosted Supabase project');
-      expect(runbook).toContain('127.0.0.1:54322');
-      expect(runbook).toContain('must never be exposed to the internet');
-      expect(runbook).toContain('scripts/restore-backup-locally.sh');
-    },
-  );
+  it('documents that the drill is local, free of hosted-project creation and not production ready', () => {
+    expect(runbook).toContain('creates no hosted Supabase project');
+    expect(runbook).toContain('127.0.0.1:54322');
+    expect(runbook).toContain('must never be exposed to the internet');
+    expect(runbook).toContain('scripts/restore-backup-locally.sh');
+  });
 });
