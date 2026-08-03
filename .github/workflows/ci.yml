@@ -43,6 +43,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Print canonical guard formatting
+        run: npx prettier src/security/local-restore-drill.integration.test.ts
+
       - name: Verify formatting
         run: npm run format:check
 
