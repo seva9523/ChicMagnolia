@@ -17,8 +17,20 @@ describe('zero-cost local restore drill', () => {
     expect(script.match(/--dbname "\$local_db_url"/g)).toHaveLength(2);
   });
 
+  it('creates, verifies and cleans up a dedicated loopback Docker network', () => {
+    expect(script).toContain(
+      'com.docker.network.bridge.host_binding_ipv4=127.0.0.1',
+    );
+    expect(script).toContain('docker network create');
+    expect(script).toContain('docker network inspect "$network_id"');
+    expect(script).toContain("[ \"$network_binding\" = '127.0.0.1' ]");
+    expect(script).toContain('supabase --network-id "$network_id" db start');
+    expect(script).toContain('docker network rm "$network_id"');
+    expect(script).toContain("SELECT 'database_host_binding=127.0.0.1'");
+  });
+
   it('uses the official single-transaction Supabase restore sequence', () => {
-    expect(script).toContain('supabase db start');
+    expect(script).toContain('db start');
     expect(script).toContain('--single-transaction');
     expect(script).toContain('--variable ON_ERROR_STOP=1');
     expect(script).toContain('SET session_replication_role = replica');
@@ -49,9 +61,10 @@ describe('zero-cost local restore drill', () => {
     expect(script).toContain("has_function_privilege('authenticated'");
   });
 
-  it('destroys the temporary local database and workdir by default', () => {
+  it('destroys the temporary local database, network and workdir by default', () => {
     expect(script).toContain('KEEP_LOCAL_RESTORE');
-    expect(script).toContain('supabase stop --no-backup');
+    expect(script).toContain('stop --no-backup');
+    expect(script).toContain('docker network rm "$network_id"');
     expect(script).toContain('rm -rf "$workdir"');
   });
 
@@ -64,6 +77,9 @@ describe('zero-cost local restore drill', () => {
   it('documents that the drill is local, free of hosted-project creation and not production ready', () => {
     expect(runbook).toContain('creates no hosted Supabase project');
     expect(runbook).toContain('127.0.0.1:54322');
+    expect(runbook).toContain(
+      'com.docker.network.bridge.host_binding_ipv4=127.0.0.1',
+    );
     expect(runbook).toContain('must never be exposed to the internet');
     expect(runbook).toContain('scripts/restore-backup-locally.sh');
   });
