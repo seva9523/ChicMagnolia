@@ -27,6 +27,8 @@ chicmagnolia-database-*.zip
 chicmagnolia-database-*.tar.gz*
 chicmagnolia-restore-drill*/
 chicmagnolia-backup-verified*/
+ChicMagnolia-restore-reports/
+chicmagnolia-local-restore-*.txt
 restored-backup/
 encrypted-artifact/
 
