@@ -16,17 +16,18 @@ Arguments:
                        Defaults to $HOME/ChicMagnolia-restore-reports.
 
 This command performs a destructive restore only against a temporary Supabase
-Postgres instance bound to 127.0.0.1:54322. It never accepts a remote database
-URL and never connects to the hosted production project.
+Postgres instance published through a dedicated Docker network whose host
+binding is fixed to 127.0.0.1. It never accepts a remote database URL and never
+connects to the hosted production project.
 
 Prerequisites:
   - Docker-compatible runtime running locally
   - Supabase CLI installed
   - psql installed (Homebrew libpq is detected automatically on macOS)
 
-By default the temporary database and working directory are destroyed after
-verification. Set KEEP_LOCAL_RESTORE=1 only when you deliberately need to
-inspect the local instance before deleting it.
+By default the temporary database, Docker network and working directory are
+destroyed after verification. Set KEEP_LOCAL_RESTORE=1 only when you
+deliberately need to inspect the local instance before deleting it.
 EOF
 }
 
@@ -150,8 +151,10 @@ printf 'Rechecking verified backup manifest...\n'
 )
 
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/chicmagnolia-local-restore.XXXXXX")
+network_id="chicmagnolia-restore-${workdir##*.}"
 report_tmp="$workdir/restore-report.txt"
 started=false
+network_created=false
 completed=false
 
 cleanup() {
@@ -160,23 +163,38 @@ cleanup() {
   set +e
 
   if [ "$started" = true ] && [ "$keep_local" != '1' ]; then
-    if ! SUPABASE_WORKDIR="$workdir" supabase stop --no-backup >/dev/null 2>&1; then
+    if ! SUPABASE_WORKDIR="$workdir" \
+      supabase --network-id "$network_id" stop --no-backup \
+      >/dev/null 2>&1; then
       cleanup_failed=true
       printf '\nWARNING: Automatic local Supabase cleanup failed.\n' >&2
-      printf 'Run these commands manually before deleting the workdir:\n' >&2
-      printf '  SUPABASE_WORKDIR=%q supabase stop --no-backup\n' "$workdir" >&2
-      printf '  rm -rf %q\n' "$workdir" >&2
     fi
   fi
 
-  if [ "$keep_local" != '1' ] && [ "$cleanup_failed" = false ]; then
+  if [ "$network_created" = true ] && [ "$keep_local" != '1' ]; then
+    if ! docker network rm "$network_id" >/dev/null 2>&1; then
+      cleanup_failed=true
+      printf '\nWARNING: Automatic Docker network cleanup failed.\n' >&2
+    fi
+  fi
+
+  if [ "$cleanup_failed" = true ]; then
+    printf 'Run these commands manually before deleting the workdir:\n' >&2
+    printf '  SUPABASE_WORKDIR=%q supabase --network-id %q stop --no-backup\n' \
+      "$workdir" "$network_id" >&2
+    printf '  docker network rm %q\n' "$network_id" >&2
+    printf '  rm -rf %q\n' "$workdir" >&2
+  elif [ "$keep_local" != '1' ]; then
     rm -rf "$workdir"
-  elif [ "$keep_local" = '1' ] && [ "$started" = true ]; then
+  elif [ "$started" = true ]; then
     printf '\nTemporary local restore was kept intentionally.\n'
     printf 'Workdir: %s\n' "$workdir"
+    printf 'Docker network: %s\n' "$network_id"
     printf 'Database: %s\n' "$local_db_url"
     printf 'Destroy it when finished with:\n'
-    printf '  SUPABASE_WORKDIR=%q supabase stop --no-backup\n' "$workdir"
+    printf '  SUPABASE_WORKDIR=%q supabase --network-id %q stop --no-backup\n' \
+      "$workdir" "$network_id"
+    printf '  docker network rm %q\n' "$network_id"
     printf '  rm -rf %q\n' "$workdir"
   fi
 
@@ -186,9 +204,9 @@ cleanup() {
 
   if [ "$status" -ne 0 ] && [ "$completed" != true ]; then
     if [ "$cleanup_failed" = false ] && [ "$keep_local" != '1' ]; then
-      printf 'Local restore drill failed; the temporary database was cleaned up.\n' >&2
+      printf 'Local restore drill failed; the temporary database and network were cleaned up.\n' >&2
     else
-      printf 'Local restore drill failed; review the retained local workdir.\n' >&2
+      printf 'Local restore drill failed; review the retained local resources.\n' >&2
     fi
   fi
 
@@ -204,9 +222,24 @@ printf 'n\n' | SUPABASE_WORKDIR="$workdir" supabase init >/dev/null
 mkdir -p "$workdir/supabase/.temp"
 printf '%s\n' "$postgres_version" > "$workdir/supabase/.temp/postgres-version"
 
+printf 'Creating a Docker network bound to 127.0.0.1...\n'
+docker network create \
+  --label 'com.chicmagnolia.restore-drill=true' \
+  --opt 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' \
+  "$network_id" \
+  >/dev/null
+network_created=true
+
+network_binding=$(docker network inspect "$network_id" \
+  --format '{{ index .Options "com.docker.network.bridge.host_binding_ipv4" }}')
+[ "$network_binding" = '127.0.0.1' ] || fail \
+  "Docker network host binding is '${network_binding}', not 127.0.0.1."
+unset network_binding
+
 printf 'Starting local Supabase Postgres %s...\n' "$postgres_version"
 started=true
-SUPABASE_WORKDIR="$workdir" supabase db start
+SUPABASE_WORKDIR="$workdir" \
+  supabase --network-id "$network_id" db start
 
 printf 'Restoring roles, schema and data into the loopback-only database...\n'
 PGCONNECT_TIMEOUT=10 "$psql_bin" \
@@ -325,6 +358,7 @@ $$;
 
 SELECT 'restore_verified_at_utc=' || to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
 SELECT 'postgres_server_version=' || current_setting('server_version');
+SELECT 'database_host_binding=127.0.0.1';
 SELECT 'auth_users=' || count(*) FROM auth.users;
 SELECT 'profiles=' || count(*) FROM public.profiles;
 SELECT 'tracked_purchases=' || count(*) FROM public.tracked_purchases;
@@ -359,5 +393,5 @@ printf 'Schema, data import, RLS, private queues and internal function privilege
 printf 'Non-sensitive count report: %s\n' "$report_file"
 
 if [ "$keep_local" != '1' ]; then
-  printf 'The temporary local database will now be destroyed automatically.\n'
+  printf 'The temporary local database and Docker network will now be destroyed automatically.\n'
 fi

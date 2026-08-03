@@ -17,8 +17,11 @@ The drill creates no hosted Supabase project and does not upgrade the production
 - local Postgres on `127.0.0.1:54322`;
 - `psql` for the single-transaction restore.
 
-The helper does not accept a database URL. Its target is hard-coded to the loopback-only local
-address, so a pasted production connection string cannot redirect the restore.
+The helper does not accept a database URL. Its restore and verification targets are hard-coded to
+the loopback address, so a pasted production connection string cannot redirect the restore. It
+also creates a unique Docker bridge network with
+`com.docker.network.bridge.host_binding_ipv4=127.0.0.1`, verifies that option before starting
+Postgres, passes the network explicitly to the Supabase CLI and removes the network afterward.
 
 ## Prerequisites on macOS
 
@@ -73,14 +76,15 @@ The helper:
 2. refuses to continue when Docker, Supabase CLI or `psql` is unavailable;
 3. refuses to use local port `54322` when another process already owns it;
 4. initializes a unique temporary Supabase work directory;
-5. starts only local Supabase Postgres, matching the first backup's Postgres release by default;
-6. restores roles, schema and data in one transaction with `ON_ERROR_STOP=1`;
-7. verifies all expected ChicMagnolia tables exist;
-8. verifies RLS is enabled on personal-data and internal tables;
-9. verifies `support_requests` and `stripe_webhook_events` have no browser-facing policies;
-10. verifies internal database functions are not executable by `anon` or `authenticated`;
-11. records only non-sensitive row counts and recovery metadata in a local report;
-12. destroys the temporary database and work directory automatically.
+5. creates and verifies a dedicated Docker network whose host binding is `127.0.0.1`;
+6. starts only local Supabase Postgres on that network, matching the first backup's Postgres release by default;
+7. restores roles, schema and data in one transaction with `ON_ERROR_STOP=1`;
+8. verifies all expected ChicMagnolia tables exist;
+9. verifies RLS is enabled on personal-data and internal tables;
+10. verifies `support_requests` and `stripe_webhook_events` have no browser-facing policies;
+11. verifies internal database functions are not executable by `anon` or `authenticated`;
+12. records only non-sensitive row counts and recovery metadata in a local report;
+13. destroys the temporary database, Docker network and work directory automatically.
 
 A successful run ends with:
 
@@ -95,7 +99,9 @@ The report is written under:
 $HOME/ChicMagnolia-restore-reports/
 ```
 
-It contains counts and technical verification results, not row contents, credentials or SQL.
+It contains counts and technical verification results, not row contents, credentials or SQL. It
+also records `database_host_binding=127.0.0.1` so the recovery evidence includes the network
+isolation used during the drill.
 
 ## Keep the temporary restore for inspection
 
@@ -107,8 +113,8 @@ KEEP_LOCAL_RESTORE=1 \
   "/path/to/restored-backup"
 ```
 
-The helper prints the exact work directory and cleanup commands. While retained, the database is
-available only at:
+The helper prints the exact work directory, Docker network and cleanup commands. While retained,
+the database is available only at:
 
 ```text
 postgresql://postgres:postgres@127.0.0.1:54322/postgres

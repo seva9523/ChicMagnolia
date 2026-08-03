@@ -39,11 +39,12 @@ afterEach(() => {
 });
 
 describe('local restore drill command flow', () => {
-  it('restores, writes a count-only report and destroys the temporary stack by default', () => {
+  it('restores through a loopback network, writes a count-only report and cleans up', () => {
     const fixtureRoot = temporaryDirectory('chicmagnolia-local-restore-test-');
     const backupDirectory = join(fixtureRoot, 'restored-backup');
     const reportDirectory = join(fixtureRoot, 'reports');
     const fakeBin = join(fixtureRoot, 'bin');
+    const dockerLog = join(fixtureRoot, 'docker.log');
     const supabaseLog = join(fixtureRoot, 'supabase.log');
 
     mkdirSync(backupDirectory);
@@ -85,7 +86,13 @@ describe('local restore drill command flow', () => {
 
     executable(
       join(fakeBin, 'docker'),
-      `#!/usr/bin/env bash\nset -euo pipefail\n[ "\${1:-}" = info ]\n`,
+      `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "${dockerLog}"
+if [ "\${1:-}" = 'network' ] && [ "\${2:-}" = 'inspect' ]; then
+  printf '127.0.0.1\n'
+fi
+`,
     );
     executable(join(fakeBin, 'nc'), '#!/usr/bin/env bash\nexit 1\n');
     executable(
@@ -93,17 +100,19 @@ describe('local restore drill command flow', () => {
       `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s|%s\n' "\${SUPABASE_WORKDIR:-}" "$*" >> "${supabaseLog}"
-case "$*" in
-  init)
-    mkdir -p "\${SUPABASE_WORKDIR}/supabase"
-    ;;
-  'db start'|'stop --no-backup')
-    ;;
-  *)
-    echo "unexpected supabase command: $*" >&2
-    exit 2
-    ;;
-esac
+if [ "\${1:-}" = 'init' ]; then
+  mkdir -p "\${SUPABASE_WORKDIR}/supabase"
+  exit 0
+fi
+if [ "\${1:-}" = '--network-id' ] && [ -n "\${2:-}" ]; then
+  case "\${3:-} \${4:-}" in
+    'db start'|'stop --no-backup')
+      exit 0
+      ;;
+  esac
+fi
+echo "unexpected supabase command: $*" >&2
+exit 2
 `,
     );
     executable(
@@ -117,6 +126,7 @@ cat >/dev/null
 cat <<'EOF'
 restore_verified_at_utc=2026-08-03T14:30:00Z
 postgres_server_version=17.6
+database_host_binding=127.0.0.1
 auth_users=1
 profiles=1
 tracked_purchases=0
@@ -161,14 +171,27 @@ EOF
     expect(reports).toHaveLength(1);
     const report = readFileSync(join(reportDirectory, reports[0]), 'utf8');
     expect(report).toContain('source_git_sha=test-source-sha');
+    expect(report).toContain('database_host_binding=127.0.0.1');
     expect(report).toContain('auth_users=1');
     expect(report).toContain('rls_verification=passed');
     expect(report).not.toContain('-- data fixture');
 
     const supabaseCalls = readFileSync(supabaseLog, 'utf8');
     expect(supabaseCalls).toContain('|init');
-    expect(supabaseCalls).toContain('|db start');
-    expect(supabaseCalls).toContain('|stop --no-backup');
+    const networkId = supabaseCalls.match(
+      /--network-id (chicmagnolia-restore-[^ ]+) db start/,
+    )?.[1];
+    expect(networkId).toBeTruthy();
+    expect(supabaseCalls).toContain(
+      `--network-id ${networkId} stop --no-backup`,
+    );
+
+    const dockerCalls = readFileSync(dockerLog, 'utf8');
+    expect(dockerCalls).toContain(
+      'com.docker.network.bridge.host_binding_ipv4=127.0.0.1',
+    );
+    expect(dockerCalls).toContain(`network inspect ${networkId}`);
+    expect(dockerCalls).toContain(`network rm ${networkId}`);
 
     const workdir = supabaseCalls.split('\n')[0]?.split('|')[0];
     expect(workdir).toBeTruthy();
