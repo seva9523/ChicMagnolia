@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 describe('local restore drill command flow', () => {
-  it('restores through a loopback network, writes a count-only report and cleans up', () => {
+  it('filters hosted role settings, restores through loopback and cleans up', () => {
     const fixtureRoot = temporaryDirectory('chicmagnolia-local-restore-test-');
     const backupDirectory = join(fixtureRoot, 'restored-backup');
     const reportDirectory = join(fixtureRoot, 'reports');
@@ -50,11 +50,17 @@ describe('local restore drill command flow', () => {
     mkdirSync(backupDirectory);
     mkdirSync(fakeBin);
 
-    for (const [name, content] of [
-      ['roles.sql', '-- roles fixture\n'],
-      ['schema.sql', '-- schema fixture\n'],
-      ['data.sql', '-- data fixture\n'],
-    ] as const) {
+    const fixtureFiles = {
+      'roles.sql': [
+        'ALTER ROLE "postgres" SET "log_min_messages" TO \'fatal\';',
+        'CREATE ROLE "app_fixture";',
+        '',
+      ].join('\n'),
+      'schema.sql': '-- schema fixture\n',
+      'data.sql': '-- data fixture\n',
+    } as const;
+
+    for (const [name, content] of Object.entries(fixtureFiles)) {
       writeFileSync(join(backupDirectory, name), content, 'utf8');
     }
 
@@ -63,9 +69,9 @@ describe('local restore drill command flow', () => {
       'source_git_sha=test-source-sha',
       'workflow_run_id=30738550186',
       'supabase_cli_version=test',
-      'roles_bytes=17',
-      'schema_bytes=18',
-      'data_bytes=16',
+      `roles_bytes=${Buffer.byteLength(fixtureFiles['roles.sql'])}`,
+      `schema_bytes=${Buffer.byteLength(fixtureFiles['schema.sql'])}`,
+      `data_bytes=${Buffer.byteLength(fixtureFiles['data.sql'])}`,
       '',
     ].join('\n');
     writeFileSync(join(backupDirectory, 'manifest.txt'), manifest, 'utf8');
@@ -99,29 +105,66 @@ fi
       join(fakeBin, 'supabase'),
       `#!/usr/bin/env bash
 set -euo pipefail
-printf '%s|%s\n' "\${SUPABASE_WORKDIR:-}" "$*" >> "${supabaseLog}"
-if [ "\${1:-}" = 'init' ]; then
-  mkdir -p "\${SUPABASE_WORKDIR}/supabase"
-  exit 0
-fi
-if [ "\${1:-}" = '--network-id' ] && [ -n "\${2:-}" ]; then
-  case "\${3:-} \${4:-}" in
-    'db start'|'stop --no-backup')
-      exit 0
+workdir=''
+network_id=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --workdir)
+      workdir=$2
+      shift 2
+      ;;
+    --network-id)
+      network_id=$2
+      shift 2
+      ;;
+    *)
+      break
       ;;
   esac
-fi
-echo "unexpected supabase command: $*" >&2
-exit 2
+done
+printf '%s|%s|%s\n' "$workdir" "$network_id" "$*" >> "${supabaseLog}"
+case "$*" in
+  init)
+    [ -n "$workdir" ]
+    mkdir -p "$workdir/supabase"
+    ;;
+  'db start'|'stop --no-backup')
+    [ -n "$workdir" ]
+    [ -n "$network_id" ]
+    ;;
+  *)
+    echo "unexpected supabase command: $*" >&2
+    exit 2
+    ;;
+esac
 `,
     );
     executable(
       join(fakeBin, 'psql'),
       `#!/usr/bin/env bash
 set -euo pipefail
-if printf '%s\n' "$*" | grep -q -- '--file'; then
+first_file=''
+has_file=false
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = '--file' ]; then
+    has_file=true
+    shift
+    if [ -z "$first_file" ]; then
+      first_file=$1
+    fi
+  fi
+  shift
+done
+
+if [ "$has_file" = true ]; then
+  if grep -qi 'log_min_messages' "$first_file"; then
+    echo 'hosted log_min_messages statement reached psql' >&2
+    exit 3
+  fi
+  grep -q 'CREATE ROLE "app_fixture";' "$first_file"
   exit 0
 fi
+
 cat >/dev/null
 cat <<'EOF'
 restore_verified_at_utc=2026-08-03T14:30:00Z
@@ -164,6 +207,9 @@ EOF
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     expect(result.stdout).toContain(
+      'Skipped 1 hosted-only log_min_messages role configuration statement(s).',
+    );
+    expect(result.stdout).toContain(
       'Local restore drill completed successfully.',
     );
 
@@ -171,19 +217,26 @@ EOF
     expect(reports).toHaveLength(1);
     const report = readFileSync(join(reportDirectory, reports[0]), 'utf8');
     expect(report).toContain('source_git_sha=test-source-sha');
+    expect(report).toContain('roles_compatibility_statements_skipped=1');
     expect(report).toContain('database_host_binding=127.0.0.1');
     expect(report).toContain('auth_users=1');
     expect(report).toContain('rls_verification=passed');
     expect(report).not.toContain('-- data fixture');
 
     const supabaseCalls = readFileSync(supabaseLog, 'utf8');
-    expect(supabaseCalls).toContain('|init');
-    const networkId = supabaseCalls.match(
-      /--network-id (chicmagnolia-restore-[^ ]+) db start/,
-    )?.[1];
-    expect(networkId).toBeTruthy();
-    expect(supabaseCalls).toContain(
-      `--network-id ${networkId} stop --no-backup`,
+    const callLines = supabaseCalls.trim().split('\n');
+    const initCall = callLines.find((line) => line.endsWith('||init'));
+    expect(initCall).toBeTruthy();
+    const workdir = initCall?.split('|')[0];
+    expect(workdir).toBeTruthy();
+    expect(workdir).not.toBe(process.cwd());
+
+    const startCall = callLines.find((line) => line.endsWith('|db start'));
+    expect(startCall).toBeTruthy();
+    const networkId = startCall?.split('|')[1];
+    expect(networkId).toMatch(/^chicmagnolia-restore-/);
+    expect(callLines).toContain(
+      `${workdir}|${networkId}|stop --no-backup`,
     );
 
     const dockerCalls = readFileSync(dockerLog, 'utf8');
@@ -193,8 +246,6 @@ EOF
     expect(dockerCalls).toContain(`network inspect ${networkId}`);
     expect(dockerCalls).toContain(`network rm ${networkId}`);
 
-    const workdir = supabaseCalls.split('\n')[0]?.split('|')[0];
-    expect(workdir).toBeTruthy();
     expect(existsSync(workdir)).toBe(false);
   });
 });
