@@ -229,12 +229,18 @@ EOF
     expect(initCall).toBeTruthy();
     const workdir = initCall?.split('|')[0];
     expect(workdir).toBeTruthy();
+    if (!workdir) {
+      throw new Error('Expected the helper to pass an explicit Supabase workdir.');
+    }
     expect(workdir).not.toBe(process.cwd());
 
     const startCall = callLines.find((line) => line.endsWith('|db start'));
     expect(startCall).toBeTruthy();
     const networkId = startCall?.split('|')[1];
     expect(networkId).toMatch(/^chicmagnolia-restore-/);
+    if (!networkId) {
+      throw new Error('Expected the helper to pass a restore Docker network.');
+    }
     expect(callLines).toContain(`${workdir}|${networkId}|stop --no-backup`);
 
     const dockerCalls = readFileSync(dockerLog, 'utf8');
