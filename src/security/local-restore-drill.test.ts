@@ -31,9 +31,9 @@ describe('zero-cost local restore drill', () => {
 
   it('keeps all Supabase CLI state inside the temporary workdir', () => {
     expect(script).toContain('supabase --workdir "$workdir" init');
-    expect(script.match(/--workdir "\$workdir"/g)?.length).toBeGreaterThanOrEqual(
-      3,
-    );
+    expect(
+      script.match(/--workdir "\$workdir"/g)?.length,
+    ).toBeGreaterThanOrEqual(3);
     expect(script).not.toContain('SUPABASE_WORKDIR=');
   });
 
