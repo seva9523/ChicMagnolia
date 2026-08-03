@@ -241,9 +241,7 @@ EOF
     const networkId = startCall?.split('|')[1];
     expect(networkId).toMatch(/^chicmagnolia-restore-/);
     if (!networkId) {
-      throw new Error(
-        'Expected the helper to pass a restore Docker network.',
-      );
+      throw new Error('Expected the helper to pass a restore Docker network.');
     }
     expect(callLines).toContain(`${workdir}|${networkId}|stop --no-backup`);
 
