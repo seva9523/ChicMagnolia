@@ -84,6 +84,35 @@ port_in_use() {
   return 1
 }
 
+prepare_roles_restore_file() {
+  local source_file=$1
+  local target_file=$2
+  local count_file=$3
+
+  awk -v count_file="$count_file" '
+    BEGIN {
+      skipped = 0
+    }
+
+    {
+      lower = tolower($0)
+      is_role_alter = lower ~ /^[[:space:]]*alter[[:space:]]+(role|user)[[:space:]]/
+      sets_log_min_messages = lower ~ /[[:space:]]set[[:space:]]+"?log_min_messages"?[[:space:]]+(to|=)/
+
+      if (is_role_alter && sets_log_min_messages) {
+        skipped++
+        next
+      }
+
+      print
+    }
+
+    END {
+      print skipped > count_file
+    }
+  ' "$source_file" > "$target_file"
+}
+
 if [ "${1:-}" = '-h' ] || [ "${1:-}" = '--help' ]; then
   usage
   exit 0
@@ -133,6 +162,7 @@ require_command grep
 require_command awk
 require_command mktemp
 require_command date
+require_command cat
 
 psql_bin=$(resolve_psql) || fail \
   'psql was not found. On macOS run: brew install libpq'
@@ -152,6 +182,8 @@ printf 'Rechecking verified backup manifest...\n'
 
 workdir=$(mktemp -d "${TMPDIR:-/tmp}/chicmagnolia-local-restore.XXXXXX")
 network_id="chicmagnolia-restore-${workdir##*.}"
+roles_restore_file="$workdir/roles.restore.sql"
+roles_filter_count_file="$workdir/roles-filter-count.txt"
 report_tmp="$workdir/restore-report.txt"
 started=false
 network_created=false
@@ -163,8 +195,10 @@ cleanup() {
   set +e
 
   if [ "$started" = true ] && [ "$keep_local" != '1' ]; then
-    if ! SUPABASE_WORKDIR="$workdir" \
-      supabase --network-id "$network_id" stop --no-backup \
+    if ! supabase \
+      --workdir "$workdir" \
+      --network-id "$network_id" \
+      stop --no-backup \
       >/dev/null 2>&1; then
       cleanup_failed=true
       printf '\nWARNING: Automatic local Supabase cleanup failed.\n' >&2
@@ -180,7 +214,7 @@ cleanup() {
 
   if [ "$cleanup_failed" = true ]; then
     printf 'Run these commands manually before deleting the workdir:\n' >&2
-    printf '  SUPABASE_WORKDIR=%q supabase --network-id %q stop --no-backup\n' \
+    printf '  supabase --workdir %q --network-id %q stop --no-backup\n' \
       "$workdir" "$network_id" >&2
     printf '  docker network rm %q\n' "$network_id" >&2
     printf '  rm -rf %q\n' "$workdir" >&2
@@ -192,7 +226,7 @@ cleanup() {
     printf 'Docker network: %s\n' "$network_id"
     printf 'Database: %s\n' "$local_db_url"
     printf 'Destroy it when finished with:\n'
-    printf '  SUPABASE_WORKDIR=%q supabase --network-id %q stop --no-backup\n' \
+    printf '  supabase --workdir %q --network-id %q stop --no-backup\n' \
       "$workdir" "$network_id"
     printf '  docker network rm %q\n' "$network_id"
     printf '  rm -rf %q\n' "$workdir"
@@ -217,8 +251,25 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+printf 'Preparing a local-compatible roles restore copy...\n'
+prepare_roles_restore_file \
+  "$backup_dir/roles.sql" \
+  "$roles_restore_file" \
+  "$roles_filter_count_file"
+roles_compatibility_statements_skipped=$(cat "$roles_filter_count_file")
+case "$roles_compatibility_statements_skipped" in
+  ''|*[!0-9]*)
+    fail 'The roles compatibility filter produced an invalid statement count.'
+    ;;
+esac
+
+if [ "$roles_compatibility_statements_skipped" -gt 0 ]; then
+  printf 'Skipped %s hosted-only log_min_messages role configuration statement(s).\n' \
+    "$roles_compatibility_statements_skipped"
+fi
+
 printf 'Initializing an isolated local Supabase workdir...\n'
-printf 'n\n' | SUPABASE_WORKDIR="$workdir" supabase init >/dev/null
+printf 'n\n' | supabase --workdir "$workdir" init >/dev/null
 mkdir -p "$workdir/supabase/.temp"
 printf '%s\n' "$postgres_version" > "$workdir/supabase/.temp/postgres-version"
 
@@ -238,14 +289,16 @@ unset network_binding
 
 printf 'Starting local Supabase Postgres %s...\n' "$postgres_version"
 started=true
-SUPABASE_WORKDIR="$workdir" \
-  supabase --network-id "$network_id" db start
+supabase \
+  --workdir "$workdir" \
+  --network-id "$network_id" \
+  db start
 
 printf 'Restoring roles, schema and data into the loopback-only database...\n'
 PGCONNECT_TIMEOUT=10 "$psql_bin" \
   --single-transaction \
   --variable ON_ERROR_STOP=1 \
-  --file "$backup_dir/roles.sql" \
+  --file "$roles_restore_file" \
   --file "$backup_dir/schema.sql" \
   --command 'SET session_replication_role = replica' \
   --file "$backup_dir/data.sql" \
@@ -381,6 +434,8 @@ report_file="$report_dir/chicmagnolia-local-restore-$(date -u +%Y%m%dT%H%M%SZ).t
   printf 'source_generated_at_utc=%s\n' "$(awk -F= '$1 == "generated_at_utc" { print $2; exit }' "$backup_dir/manifest.txt")"
   printf 'source_git_sha=%s\n' "$(awk -F= '$1 == "source_git_sha" { print $2; exit }' "$backup_dir/manifest.txt")"
   printf 'source_workflow_run_id=%s\n' "$(awk -F= '$1 == "workflow_run_id" { print $2; exit }' "$backup_dir/manifest.txt")"
+  printf 'roles_compatibility_statements_skipped=%s\n' \
+    "$roles_compatibility_statements_skipped"
   cat "$report_tmp"
 } > "$report_file"
 chmod 600 "$report_file"
