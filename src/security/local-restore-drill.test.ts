@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const script = readFileSync('scripts/restore-backup-locally.sh', 'utf8');
 const runbook = readFileSync('docs/LOCAL_RESTORE_DRILL.md', 'utf8');
+const gitignore = readFileSync('.gitignore', 'utf8');
 
 describe('zero-cost local restore drill', () => {
   it('targets only a fixed loopback database and never accepts a remote URL', () => {
@@ -51,6 +52,12 @@ describe('zero-cost local restore drill', () => {
     expect(script).toContain('KEEP_LOCAL_RESTORE');
     expect(script).toContain('supabase stop --no-backup');
     expect(script).toContain('rm -rf "$workdir"');
+  });
+
+  it('keeps local recovery reports and restored files out of Git', () => {
+    expect(gitignore).toContain('ChicMagnolia-restore-reports/');
+    expect(gitignore).toContain('chicmagnolia-local-restore-*.txt');
+    expect(gitignore).toContain('restored-backup/');
   });
 
   it('documents that the drill is local, free of hosted-project creation and not production ready', () => {
