@@ -89,21 +89,9 @@ describe('local restore drill command flow', () => {
       `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >> "${dockerLog}"
-case "$*" in
-  info)
-    ;;
-  network\ create\ *)
-    ;;
-  network\ inspect\ *)
-    printf '127.0.0.1\n'
-    ;;
-  network\ rm\ *)
-    ;;
-  *)
-    echo "unexpected docker command: $*" >&2
-    exit 2
-    ;;
-esac
+if [ "\${1:-}" = 'network' ] && [ "\${2:-}" = 'inspect' ]; then
+  printf '127.0.0.1\n'
+fi
 `,
     );
     executable(join(fakeBin, 'nc'), '#!/usr/bin/env bash\nexit 1\n');
@@ -112,17 +100,19 @@ esac
       `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s|%s\n' "\${SUPABASE_WORKDIR:-}" "$*" >> "${supabaseLog}"
-case "$*" in
-  init)
-    mkdir -p "\${SUPABASE_WORKDIR}/supabase"
-    ;;
-  --network-id\ *\ db\ start|--network-id\ *\ stop\ --no-backup)
-    ;;
-  *)
-    echo "unexpected supabase command: $*" >&2
-    exit 2
-    ;;
-esac
+if [ "\${1:-}" = 'init' ]; then
+  mkdir -p "\${SUPABASE_WORKDIR}/supabase"
+  exit 0
+fi
+if [ "\${1:-}" = '--network-id' ] && [ -n "\${2:-}" ]; then
+  case "\${3:-} \${4:-}" in
+    'db start'|'stop --no-backup')
+      exit 0
+      ;;
+  esac
+fi
+echo "unexpected supabase command: $*" >&2
+exit 2
 `,
     );
     executable(
