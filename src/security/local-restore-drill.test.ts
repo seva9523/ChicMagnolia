@@ -23,7 +23,7 @@ describe('zero-cost local restore drill', () => {
     );
     expect(script).toContain('docker network create');
     expect(script).toContain('docker network inspect "$network_id"');
-    expect(script).toContain("[ \"$network_binding\" = '127.0.0.1' ]");
+    expect(script).toContain('[ "$network_binding" = \'127.0.0.1\' ]');
     expect(script).toContain('supabase --network-id "$network_id" db start');
     expect(script).toContain('docker network rm "$network_id"');
     expect(script).toContain("SELECT 'database_host_binding=127.0.0.1'");
