@@ -60,10 +60,13 @@ describe('zero-cost local restore drill', () => {
     expect(gitignore).toContain('restored-backup/');
   });
 
-  it('documents that the drill is local, free of hosted-project creation and not production ready', () => {
-    expect(runbook).toContain('creates no hosted Supabase project');
-    expect(runbook).toContain('127.0.0.1:54322');
-    expect(runbook).toContain('must never be exposed to the internet');
-    expect(runbook).toContain('scripts/restore-backup-locally.sh');
-  });
+  it(
+    'documents that the drill is local, free of hosted-project creation and not production ready',
+    () => {
+      expect(runbook).toContain('creates no hosted Supabase project');
+      expect(runbook).toContain('127.0.0.1:54322');
+      expect(runbook).toContain('must never be exposed to the internet');
+      expect(runbook).toContain('scripts/restore-backup-locally.sh');
+    },
+  );
 });
