@@ -19,6 +19,7 @@ describe('database privacy controls', () => {
       '202607290001_create_notification_history.sql',
       '202607290002_create_stripe_subscriptions.sql',
       '202607310001_create_legal_acceptances.sql',
+      '202608040001_create_private_beta_access.sql',
     ];
 
     for (const file of files) {
@@ -36,6 +37,7 @@ describe('database privacy controls', () => {
       migration('202607290001_create_notification_history.sql'),
       migration('202607290002_create_stripe_subscriptions.sql'),
       migration('202607310001_create_legal_acceptances.sql'),
+      migration('202608040001_create_private_beta_access.sql'),
     ].join('\n');
 
     for (const table of [
@@ -45,6 +47,7 @@ describe('database privacy controls', () => {
       'notification_history',
       'subscriptions',
       'legal_acceptances',
+      'beta_access_grants',
     ]) {
       expect(combined).toMatch(
         new RegExp(
@@ -69,6 +72,41 @@ describe('database privacy controls', () => {
     expect(sql).not.toMatch(
       /create policy[^;]+legal_acceptances[\s\S]+?for delete/i,
     );
+  });
+
+  it('keeps private beta invitation tokens hashed and server-controlled', () => {
+    const sql = migration('202608040001_create_private_beta_access.sql');
+
+    expect(sql).toMatch(/token_hash text not null unique/i);
+    expect(sql).toMatch(/token_hash ~ '\^\[0-9a-f\]\{64\}\$'/i);
+    expect(sql).toMatch(
+      /alter table public\.beta_invites enable row level security/i,
+    );
+    expect(sql).not.toMatch(/create policy[^;]+beta_invites/i);
+    expect(sql).toMatch(
+      /alter table public\.beta_access_grants enable row level security/i,
+    );
+    expect(sql).toMatch(/Users can view their own beta access/i);
+    expect(sql).not.toMatch(
+      /create policy[^;]+beta_access_grants[\s\S]+?for insert/i,
+    );
+    expect(sql).not.toMatch(
+      /create policy[^;]+beta_access_grants[\s\S]+?for update/i,
+    );
+    expect(sql).not.toMatch(
+      /create policy[^;]+beta_access_grants[\s\S]+?for delete/i,
+    );
+    expect(sql).toMatch(
+      /create or replace function public\.redeem_beta_invite/i,
+    );
+    expect(sql).toMatch(/security definer/i);
+    expect(sql).toMatch(
+      /revoke all on function public\.redeem_beta_invite[\s\S]+from public, anon, authenticated/i,
+    );
+    expect(sql).toMatch(
+      /grant execute on function public\.redeem_beta_invite[\s\S]+to service_role/i,
+    );
+    expect(sql).toMatch(/invited_email = null/i);
   });
 
   it('keeps support requests private while preserving unresolved cases after user deletion', () => {
