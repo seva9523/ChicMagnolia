@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { validateRetailerSelection } from '@/retailers/selection';
 import {
   performPriceCheck,
   type TrackedPurchaseForCheck,
@@ -89,6 +90,18 @@ export async function createPurchase(formData: FormData) {
     redirect(`/dashboard/purchases/new?error=${encodeURIComponent(message)}`);
   }
 
+  const retailerSelection = validateRetailerSelection(
+    result.data.retailerName,
+    result.data.productUrl,
+  );
+  if (!retailerSelection.ok) {
+    redirect(
+      `/dashboard/purchases/new?error=${encodeURIComponent(
+        retailerSelection.message,
+      )}`,
+    );
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -117,9 +130,9 @@ export async function createPurchase(formData: FormData) {
 
   const { error } = await supabase.from('tracked_purchases').insert({
     user_id: user.id,
-    retailer_name: result.data.retailerName,
+    retailer_name: retailerSelection.retailerName,
     product_name: result.data.productName,
-    product_url: result.data.productUrl,
+    product_url: retailerSelection.productUrl.toString(),
     purchase_price_pence: Math.round(result.data.purchasePrice * 100),
     currency: 'GBP',
     purchase_date: result.data.purchaseDate,
