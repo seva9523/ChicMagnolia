@@ -174,7 +174,7 @@ lost. Do not expose this table through a browser RLS policy.
 Chic Magnolia deliberately has one MVP plan: £4.99 GBP every month. Do not add coupons,
 annual billing, or additional tiers.
 
-1. In Stripe test mode, create a product named `ChicMagnolia Monthly` with one recurring
+1. In Stripe test mode, create a product named `Chic Magnolia Monthly` with one recurring
    monthly GBP price of `£4.99`.
 2. Store its `price_...` ID as `STRIPE_PRICE_ID` and the matching test secret key as
    `STRIPE_SECRET_KEY` in Vercel Preview and Production while testing.
