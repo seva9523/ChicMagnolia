@@ -8,19 +8,23 @@ import Home from './page';
 afterEach(cleanup);
 
 describe('Home', () => {
-  it('offers account creation and sign-in', () => {
+  it('offers invitation access and sign-in without advertising live payment', () => {
     render(<Home />);
 
     expect(
       screen.getByText('Catch price drops before your return window closes.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Create account' }),
+      screen.getByRole('link', { name: 'Use an invitation' }),
     ).toHaveAttribute('href', '/sign-up');
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/login',
     );
+    expect(
+      screen.getByText(/No payment is required during the beta/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('£4.99')).not.toBeInTheDocument();
   });
 
   it('shows only retailers that are implemented in the private beta', () => {
