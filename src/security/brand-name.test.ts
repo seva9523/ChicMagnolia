@@ -5,25 +5,67 @@ import { describe, expect, it } from 'vitest';
 
 const repositoryRoot = process.cwd();
 const sourceRoot = join(repositoryRoot, 'src');
+const docsRoot = join(repositoryRoot, 'docs');
 const unspacedBrand = ['Chic', 'Magnolia'].join('');
 const standaloneBrandPattern = new RegExp(
   `(?<![A-Za-z0-9_./-])${unspacedBrand}(?![A-Za-z0-9_./-])`,
 );
 
-function sourceFiles(directory: string): string[] {
+function filesMatching(directory: string, pattern: RegExp): string[] {
   return readdirSync(directory).flatMap((entry) => {
     const path = join(directory, entry);
     const metadata = statSync(path);
-    if (metadata.isDirectory()) return sourceFiles(path);
-    return /\.(?:ts|tsx)$/.test(entry) ? [path] : [];
+    if (metadata.isDirectory()) return filesMatching(path, pattern);
+    return pattern.test(entry) ? [path] : [];
   });
+}
+
+function markdownProse(markdown: string): string {
+  let inFence = false;
+  let fenceMarker = '';
+
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const stripped = line.trimStart();
+      if (stripped.startsWith('```') || stripped.startsWith('~~~')) {
+        const marker = stripped.slice(0, 3);
+        if (!inFence) {
+          inFence = true;
+          fenceMarker = marker;
+        } else if (marker === fenceMarker) {
+          inFence = false;
+          fenceMarker = '';
+        }
+        return '';
+      }
+
+      if (inFence) return '';
+      return line.replace(/`+[^`]*`+/g, '');
+    })
+    .join('\n');
 }
 
 describe('product branding', () => {
   it('uses the spaced Chic Magnolia name in user-facing source', () => {
-    const violations = sourceFiles(sourceRoot)
+    const violations = filesMatching(sourceRoot, /\.(?:ts|tsx)$/)
       .filter((path) => !path.endsWith('brand-name.test.ts'))
       .filter((path) => standaloneBrandPattern.test(readFileSync(path, 'utf8')))
+      .map((path) => relative(repositoryRoot, path));
+
+    expect(violations).toEqual([]);
+  });
+
+  it('uses the spaced name in documentation prose', () => {
+    const markdownFiles = [
+      join(repositoryRoot, 'README.md'),
+      join(repositoryRoot, 'SECURITY.md'),
+      ...filesMatching(docsRoot, /\.md$/),
+    ];
+    const violations = markdownFiles
+      .filter((path) =>
+        standaloneBrandPattern.test(markdownProse(readFileSync(path, 'utf8'))),
+      )
       .map((path) => relative(repositoryRoot, path));
 
     expect(violations).toEqual([]);
