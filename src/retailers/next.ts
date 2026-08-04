@@ -4,7 +4,6 @@ import type {
   RetailerProductSnapshot,
   RetailerReturnPolicy,
 } from './types';
-import { variantInStock, variantPriceMinor } from './variant';
 
 const NEXT_RETURN_POLICY_URL = 'https://www.next.co.uk/help/returns';
 const BROWSERLESS_CONTENT_ENDPOINT =
@@ -19,8 +18,12 @@ function decodeHtml(value: string) {
     .replaceAll('&gt;', '>');
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function metaContent(html: string, key: string): string | null {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escaped = escapeRegExp(key);
   const patterns = [
     new RegExp(
       `<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`,
@@ -42,6 +45,8 @@ function metaContent(html: string, key: string): string | null {
 function stripTags(value: string) {
   return decodeHtml(
     value
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim(),
@@ -69,6 +74,36 @@ function productIdFromUrl(url: URL): string | null {
   return segments.at(-1)?.toUpperCase() ?? null;
 }
 
+function productHeading(html: string): string | null {
+  const heading = stripTags(
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '',
+  );
+  return heading || null;
+}
+
+function productScopedPrice(html: string): string | null {
+  const text = stripTags(html);
+  const heading = productHeading(html);
+  const productCode = productCodeFromHtml(html);
+  if (!heading) return null;
+
+  const codeMarker = productCode ? `Product Code: ${productCode}` : null;
+  const codeIndex = codeMarker ? text.indexOf(codeMarker) : -1;
+  const headingIndex =
+    codeIndex >= 0
+      ? text.lastIndexOf(heading, codeIndex)
+      : text.indexOf(heading);
+  if (headingIndex < 0) return null;
+
+  const scopeEnd = codeIndex >= 0 ? codeIndex : headingIndex + 800;
+  const scope = text.slice(headingIndex, scopeEnd);
+  return (
+    scope.match(/\bNow\s*£\s*([0-9]+(?:\.[0-9]{1,2})?)/i)?.[1] ??
+    scope.match(/£\s*([0-9]+(?:\.[0-9]{1,2})?)/)?.[1] ??
+    null
+  );
+}
+
 function visiblePrice(html: string): string | null {
   const text = stripTags(html);
   return (
@@ -79,21 +114,108 @@ function visiblePrice(html: string): string | null {
   );
 }
 
+function attributeValue(attributes: string, name: string): string | null {
+  const escaped = escapeRegExp(name);
+  return (
+    attributes.match(new RegExp(`${escaped}=["']([^"']*)["']`, 'i'))?.[1] ??
+    null
+  );
+}
+
+function nextSizeAliases(size: string): string[] {
+  const value = size.trim();
+  const aliases = new Set([value]);
+  const clothingSize = value.toUpperCase().match(/^(?:UK\s*)?(\d{1,2})$/)?.[1];
+
+  if (clothingSize) {
+    aliases.add(clothingSize);
+    aliases.add(`UK ${clothingSize}`);
+  }
+
+  return [...aliases].filter(Boolean);
+}
+
+function exactNextSizeAvailability(html: string, size: string): boolean | null {
+  const aliases = nextSizeAliases(size);
+  const matches: boolean[] = [];
+
+  for (const match of html.matchAll(
+    /<button\b([^>]*)>([\s\S]*?)<\/button>/gi,
+  )) {
+    const attributes = decodeHtml(match[1] ?? '');
+    const text = stripTags(match[2] ?? '');
+    const ariaLabel = decodeHtml(
+      attributeValue(attributes, 'aria-label') ?? '',
+    );
+    const isExactSize = aliases.some((alias) => {
+      const escaped = escapeRegExp(alias);
+      return (
+        text.trim().toLowerCase() === alias.toLowerCase() ||
+        new RegExp(`^${escaped}(?:\\s|$)`, 'i').test(ariaLabel)
+      );
+    });
+
+    if (!isExactSize) continue;
+
+    const evidence = `${attributes} ${ariaLabel} ${text}`.toLowerCase();
+    const unavailable =
+      evidence.includes('unavailable') ||
+      evidence.includes('out of stock') ||
+      evidence.includes('sold out') ||
+      /aria-disabled=["']true["']/.test(evidence) ||
+      /(?:^|\s)disabled(?:\s|=|$)/.test(evidence);
+    matches.push(!unavailable);
+  }
+
+  if (matches.length === 0) return null;
+  return matches.some(Boolean);
+}
+
+function selectedNextColourMatches(html: string, colour: string): boolean {
+  const escapedColour = escapeRegExp(colour.trim());
+  const text = stripTags(html);
+  const explicitColour = new RegExp(
+    `\\bColour\\s*:\\s*${escapedColour}(?=$|[\\s,./-])`,
+    'i',
+  );
+  if (explicitColour.test(text)) return true;
+
+  const heading = productHeading(html) ?? metaContent(html, 'og:title') ?? '';
+  return new RegExp(`(?:^|[^a-z0-9])${escapedColour}(?=$|[^a-z0-9])`, 'i').test(
+    heading,
+  );
+}
+
+function exactNextVariantInStock(
+  html: string,
+  variant: ProductVariant,
+  defaultInStock: boolean,
+): boolean {
+  if (variant.colour && !selectedNextColourMatches(html, variant.colour)) {
+    return false;
+  }
+
+  if (variant.size) {
+    return exactNextSizeAvailability(html, variant.size) ?? false;
+  }
+
+  return defaultInStock;
+}
+
 export function parseNextProductHtml(
   html: string,
   url: URL,
   variant: ProductVariant,
 ): RetailerProductSnapshot {
   const price =
+    productScopedPrice(html) ??
     metaContent(html, 'product:price:amount') ??
     metaContent(html, 'og:price:amount') ??
     visiblePrice(html);
   if (!price) throw new Error('Next product metadata was not found.');
 
   const title =
-    metaContent(html, 'og:title') ??
-    stripTags(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '') ??
-    'Next product';
+    metaContent(html, 'og:title') ?? productHeading(html) ?? 'Next product';
   const text = stripTags(html).toLowerCase();
   const defaultInStock =
     !text.includes('out of stock') && !text.includes('currently unavailable');
@@ -104,14 +226,14 @@ export function parseNextProductHtml(
     retailerProductId: productCodeFromHtml(html) ?? productIdFromUrl(url),
     title: title || 'Next product',
     price: {
-      amountMinor: variantPriceMinor(html, variant) ?? basePriceMinor,
+      amountMinor: basePriceMinor,
       currency:
         metaContent(html, 'product:price:currency') ??
         metaContent(html, 'og:price:currency') ??
         'GBP',
     },
     variant,
-    inStock: variantInStock(html, variant, defaultInStock),
+    inStock: exactNextVariantInStock(html, variant, defaultInStock),
     checkedAt: new Date(),
   };
 }
