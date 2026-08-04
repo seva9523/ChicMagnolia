@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: daily-price-monitoring
+  cancel-in-progress: false
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -26,6 +30,7 @@ jobs:
     env:
       APP_URL: ${{ secrets.CHICMAGNOLIA_APP_URL }}
       CRON_SECRET: ${{ secrets.CHICMAGNOLIA_CRON_SECRET }}
+      SUPPORTED_RETAILERS: Zara, Mango, Next, ASOS, UNIQLO, H&M and COS UK
 
     steps:
       - name: Verify cron endpoint authentication
@@ -74,6 +79,17 @@ jobs:
           fi
 
           echo "Cron endpoint rejected missing and invalid credentials as expected."
+
+      - name: Record supported retailer scope
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          {
+            echo "## Daily price monitoring"
+            echo
+            echo "Supported retailer scope: ${SUPPORTED_RETAILERS}."
+            echo "Scheduled checks use the production fast route and exact saved variants."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Run due price checks
         if: github.event_name != 'pull_request'

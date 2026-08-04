@@ -1,26 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { SupportedRetailers } from '@/components/supported-retailers';
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { SUPPORTED_RETAILER_NAMES } from '@/retailers/catalog';
 import {
   getUserSubscription,
   hasMonitoringAccess,
 } from '@/services/subscription-access';
 
 import { createPurchase } from '../actions';
-
-const retailers = [
-  'Zara',
-  'H&M',
-  'Mango',
-  'ASOS',
-  'Uniqlo',
-  'Massimo Dutti',
-  'COS',
-  '& Other Stories',
-  'Other',
-];
 
 const inputClassName =
   'border-input bg-background h-11 w-full rounded-md border px-3 py-2 text-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring';
@@ -71,6 +61,11 @@ export default async function NewPurchasePage({
             track the item.
           </p>
 
+          <SupportedRetailers
+            className="mt-6 rounded-2xl border p-4"
+            heading="You can currently add purchases from"
+          />
+
           {params.error ? (
             <p className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">
               {params.error}
@@ -90,9 +85,9 @@ export default async function NewPurchasePage({
                 defaultValue=""
               >
                 <option disabled value="">
-                  Select a retailer
+                  Select a supported retailer
                 </option>
-                {retailers.map((retailer) => (
+                {SUPPORTED_RETAILER_NAMES.map((retailer) => (
                   <option key={retailer} value={retailer}>
                     {retailer}
                   </option>

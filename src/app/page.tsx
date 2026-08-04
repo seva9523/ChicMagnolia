@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { CheckCircle2, ShieldCheck } from 'lucide-react';
 
 import { SiteFooter } from '@/components/site-footer';
+import { SupportedRetailers } from '@/components/supported-retailers';
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
@@ -40,6 +41,8 @@ export default function Home() {
               <Link href="/login">Sign in</Link>
             </Button>
           </div>
+
+          <SupportedRetailers className="mt-8 border-t pt-8" />
 
           <div className="bg-background mt-8 flex gap-3 rounded-2xl border p-4 text-sm">
             <ShieldCheck
