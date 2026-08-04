@@ -99,7 +99,7 @@ Never mix sandbox keys, price IDs or webhook secrets with live resources.
 ## 5. Resend and support rollback
 
 1. If the support automation sends incorrect or repeated messages, disable the
-   `ChicMagnolia support request notifications` automation.
+   `Chic Magnolia support request notifications` automation.
 2. Keep the support form available when storage is healthy. Requests are written to
    `support_requests` before notification, so failed notifications can be recovered.
 3. Query rows where `notification_status = 'failed'`, fix the template or automation, then
