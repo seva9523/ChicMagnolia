@@ -16,7 +16,7 @@ type Fixture = {
   parse: (
     html: string,
     url: URL,
-    variant: { size: string; colour: string },
+    variant: { size: string | null; colour: string | null },
   ) => unknown;
 };
 
@@ -51,7 +51,10 @@ function contexts(text: string, pattern: RegExp, radius = 180) {
     const index = match.index ?? 0;
     matches.push(
       compact(
-        text.slice(Math.max(0, index - radius), Math.min(text.length, index + radius)),
+        text.slice(
+          Math.max(0, index - radius),
+          Math.min(text.length, index + radius),
+        ),
       ),
     );
   }
@@ -68,6 +71,12 @@ function elementEvidence(html: string, token: string) {
   return [...html.matchAll(pattern)]
     .map((match) => compact(match[0]).slice(0, 1200))
     .slice(0, 20);
+}
+
+function priceMetaEvidence(html: string) {
+  return [...html.matchAll(/<meta\b[^>]*(?:price|amount)[^>]*>/gi)]
+    .map((match) => compact(match[0]))
+    .slice(0, 30);
 }
 
 export async function GET(request: Request) {
@@ -89,6 +98,10 @@ export async function GET(request: Request) {
   const html = await fetchOxylabsHtml(url, undefined, 55_000);
   const visible = visiblePageText(html);
   const snapshot = fixture.parse(html, url, variant);
+  const baseSnapshot =
+    key === 'next'
+      ? fixture.parse(html, url, { size: null, colour: null })
+      : null;
 
   return NextResponse.json(
     {
@@ -97,10 +110,24 @@ export async function GET(request: Request) {
       variant,
       htmlLength: html.length,
       snapshot,
-      visiblePriceEvidence: contexts(visible, /(?:Now\s*)?£\s*[0-9]+(?:\.[0-9]{1,2})?/gi),
-      sizeTextEvidence: contexts(visible, new RegExp(`(?:^|[^a-z0-9])${fixture.size}(?=$|[^a-z0-9])`, 'gi')),
+      baseSnapshot,
+      priceMetaEvidence: priceMetaEvidence(html),
+      visiblePriceEvidence: contexts(
+        visible,
+        /(?:Now\s*)?£\s*[0-9]+(?:\.[0-9]{1,2})?/gi,
+      ),
+      sizeTextEvidence: contexts(
+        visible,
+        new RegExp(
+          `(?:^|[^a-z0-9])${fixture.size}(?=$|[^a-z0-9])`,
+          'gi',
+        ),
+      ),
       sizeElementEvidence: elementEvidence(html, fixture.size),
-      unavailableEvidence: contexts(visible, /not available|unavailable|out of stock|sold out|notify me|i want it/gi),
+      unavailableEvidence: contexts(
+        visible,
+        /not available|unavailable|out of stock|sold out|notify me|i want it/gi,
+      ),
     },
     {
       headers: {
