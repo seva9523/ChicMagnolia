@@ -27,7 +27,7 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
       <main className="flex min-h-screen items-center justify-center px-6 py-16">
         <section className="bg-card w-full max-w-md rounded-3xl border p-8 shadow-sm">
           <Link href="/" className="text-primary text-sm font-semibold">
-            ChicMagnolia
+            Chic Magnolia
           </Link>
           <h1 className="mt-4 text-3xl font-semibold">{title}</h1>
           <p className="text-muted-foreground mt-2 text-sm">

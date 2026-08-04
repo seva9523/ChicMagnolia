@@ -49,7 +49,7 @@ export default async function BillingPage({
 
   const checkoutMessage =
     params.checkout === 'success'
-      ? 'Checkout was submitted. Paid access activates only after ChicMagnolia receives and verifies the signed Stripe webhook.'
+      ? 'Checkout was submitted. Paid access activates only after Chic Magnolia receives and verifies the signed Stripe webhook.'
       : params.checkout === 'cancelled'
         ? 'Checkout was canceled. No subscription access was granted.'
         : null;
@@ -74,7 +74,7 @@ export default async function BillingPage({
 
         <div className="bg-card mt-6 rounded-3xl border p-6 shadow-sm sm:p-10">
           <p className="text-primary text-sm font-semibold">
-            ChicMagnolia billing
+            Chic Magnolia billing
           </p>
           <h1 className="mt-2 text-3xl font-semibold">
             One simple monthly plan

@@ -8,9 +8,9 @@ import { SUPPORT_TOPICS } from '@/services/support-requests';
 import { submitSupportRequest } from './actions';
 
 export const metadata: Metadata = {
-  title: 'Support | ChicMagnolia',
+  title: 'Support | Chic Magnolia',
   description:
-    'Contact ChicMagnolia about an account, billing, retailer check or privacy request.',
+    'Contact Chic Magnolia about an account, billing, retailer check or privacy request.',
 };
 
 export default async function SupportPage({
@@ -30,7 +30,7 @@ export default async function SupportPage({
     <main className="min-h-screen px-6 py-10 sm:px-10">
       <div className="mx-auto max-w-3xl">
         <Link className="text-primary text-sm font-semibold" href="/">
-          ChicMagnolia
+          Chic Magnolia
         </Link>
 
         <div className="mt-6">

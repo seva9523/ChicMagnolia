@@ -1,4 +1,4 @@
-# ChicMagnolia rollback procedure
+# Chic Magnolia rollback procedure
 
 Use this procedure when a production merge, deployment, migration or provider change causes
 material user impact. Keep Stripe in sandbox mode until the separate live-launch checklist is
@@ -20,7 +20,7 @@ approved.
 Use this when the previous production deployment was healthy and the failure is caused by a
 new application build.
 
-1. Open the ChicMagnolia Vercel project and select **Deployments**.
+1. Open the Chic Magnolia Vercel project and select **Deployments**.
 2. Identify the most recent known-good production deployment. Confirm its Git commit before
    promoting it.
 3. Use Vercel's rollback or promote action to restore that deployment to the production
@@ -78,7 +78,7 @@ Never drop one of these tables during an incident without a verified export or r
 2. If webhook processing is causing bad writes, temporarily disable only the affected sandbox
    endpoint or event type. Do not delete production/live configuration as a shortcut.
 3. Restore the last known-good application deployment or webhook code.
-4. Re-enable the exact event list used by ChicMagnolia:
+4. Re-enable the exact event list used by Chic Magnolia:
    - `checkout.session.completed`;
    - `customer.subscription.created`;
    - `customer.subscription.updated`;

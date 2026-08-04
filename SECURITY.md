@@ -8,7 +8,7 @@ private beta.
 ## Reporting a vulnerability
 
 Please report suspected security issues privately through the
-[ChicMagnolia support form](https://chicmagnolia.com/support) and select **Security report**.
+[Chic Magnolia support form](https://chicmagnolia.com/support) and select **Security report**.
 
 Include:
 
@@ -25,7 +25,7 @@ Do not:
 - test with real payment-card data;
 - include passwords, Supabase keys, Stripe keys or session cookies in the report.
 
-ChicMagnolia will acknowledge a report as soon as reasonably possible, investigate it and
+Chic Magnolia will acknowledge a report as soon as reasonably possible, investigate it and
 provide an update when the issue is understood. Good-faith reports that respect these rules
 will not be treated as abuse.
 

@@ -1,6 +1,6 @@
-# ChicMagnolia
+# Chic Magnolia
 
-ChicMagnolia helps UK shoppers track fashion purchases during their return windows,
+Chic Magnolia helps UK shoppers track fashion purchases during their return windows,
 check the saved size and colour, and spot price drops while the item can still be
 returned.
 
@@ -139,7 +139,7 @@ subscription state. It intentionally excludes card data, Stripe customer and sub
 IDs, price IDs and webhook internals.
 
 Account deletion requires the authenticated email address. If a Stripe customer is linked,
-ChicMagnolia first deletes the Stripe customer, immediately ending active subscriptions and
+Chic Magnolia first deletes the Stripe customer, immediately ending active subscriptions and
 preventing future use of saved payment details. It then deletes the Supabase auth user;
 foreign-key cascades remove the profile, purchases, price checks, notifications,
 subscription state and legal acceptances. Stripe webhooks arriving after deletion are
@@ -171,7 +171,7 @@ lost. Do not expose this table through a browser RLS policy.
 
 ## Stripe subscription setup
 
-ChicMagnolia deliberately has one MVP plan: £4.99 GBP every month. Do not add coupons,
+Chic Magnolia deliberately has one MVP plan: £4.99 GBP every month. Do not add coupons,
 annual billing, or additional tiers.
 
 1. In Stripe test mode, create a product named `ChicMagnolia Monthly` with one recurring

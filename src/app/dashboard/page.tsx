@@ -103,7 +103,7 @@ export default async function DashboardPage({
     <main className="min-h-screen px-6 py-8 sm:px-10">
       <header className="mx-auto flex max-w-6xl flex-col justify-between gap-4 border-b pb-6 sm:flex-row sm:items-center">
         <div>
-          <p className="text-primary text-sm font-semibold">ChicMagnolia</p>
+          <p className="text-primary text-sm font-semibold">Chic Magnolia</p>
           <p className="text-muted-foreground text-sm">
             Post-purchase savings assistant
           </p>

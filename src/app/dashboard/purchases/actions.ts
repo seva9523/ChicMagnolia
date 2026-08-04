@@ -54,7 +54,7 @@ async function requirePaidMonitoringAccess(
 
   if (!hasMonitoringAccess(subscription)) {
     redirect(
-      '/dashboard/billing?message=An active ChicMagnolia subscription is required for monitoring.',
+      '/dashboard/billing?message=An active Chic Magnolia subscription is required for monitoring.',
     );
   }
 }

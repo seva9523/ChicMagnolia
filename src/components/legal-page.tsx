@@ -19,7 +19,7 @@ export function LegalPage({
       <main className="min-h-screen px-6 py-10 sm:px-10">
         <article className="mx-auto max-w-3xl">
           <Link className="text-primary text-sm font-semibold" href="/">
-            ChicMagnolia
+            Chic Magnolia
           </Link>
           <h1 className="mt-6 text-4xl font-semibold sm:text-5xl">{title}</h1>
           <p className="text-muted-foreground mt-4 text-lg leading-8">

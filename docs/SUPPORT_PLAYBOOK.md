@@ -1,4 +1,4 @@
-# ChicMagnolia private beta support playbook
+# Chic Magnolia private beta support playbook
 
 Use these replies as starting points, not automatic promises. Read the stored support request
 and check the relevant Supabase, Vercel, Stripe, Resend or retailer records before responding.
@@ -27,7 +27,7 @@ Depending on the issue, ask only for:
 - the account email address already used in the request;
 - the affected product URL;
 - saved colour and saved size;
-- expected result and actual ChicMagnolia result;
+- expected result and actual Chic Magnolia result;
 - approximate date and time of the action;
 - a screenshot with personal information, cookies and payment details removed;
 - Stripe invoice or subscription ID when visible to the user, but never a full card number.

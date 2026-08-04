@@ -74,7 +74,7 @@ export function buildPriceDropEmail(input: PriceDropEmailInput) {
     html: `
       <div style="background:#fbf8f3;padding:32px 16px;font-family:Arial,sans-serif;color:#241b18">
         <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #eadfd4;border-radius:18px;padding:28px">
-          <p style="margin:0;color:#8f2f43;font-size:14px;font-weight:700">ChicMagnolia</p>
+          <p style="margin:0;color:#8f2f43;font-size:14px;font-weight:700">Chic Magnolia</p>
           <h1 style="margin:14px 0 8px;font-size:28px;line-height:1.2">The price dropped by ${savings}</h1>
           <p style="margin:0;color:#6b5d58;line-height:1.6">
             ${productName} at ${retailerName} is currently ${currentPrice}, down from the ${purchasePrice} you paid.
@@ -88,7 +88,7 @@ export function buildPriceDropEmail(input: PriceDropEmailInput) {
             The alert is based on the latest daily check and the saved size and colour. Confirm the final price and availability with the retailer before returning or repurchasing.
           </p>
           <p style="margin:14px 0 0;font-size:13px">
-            <a href="${dashboardUrl}" style="color:#8f2f43">Open your ChicMagnolia dashboard</a>
+            <a href="${dashboardUrl}" style="color:#8f2f43">Open your Chic Magnolia dashboard</a>
           </p>
         </div>
       </div>

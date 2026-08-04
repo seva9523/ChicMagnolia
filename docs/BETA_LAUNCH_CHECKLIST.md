@@ -1,4 +1,4 @@
-# ChicMagnolia private beta launch checklist
+# Chic Magnolia private beta launch checklist
 
 This checklist is for the first private cohort. It deliberately excludes growth features and
 Stripe live-mode activation until the legal, operational and support steps are complete.
@@ -6,7 +6,7 @@ Stripe live-mode activation until the legal, operational and support steps are c
 ## 1. Legal and privacy
 
 - [x] Confirm the current private-beta operator and data controller as Sevinj Ahmadova and
-      identify her in the Privacy notice and Terms. Revisit this immediately if ChicMagnolia is
+      identify her in the Privacy notice and Terms. Revisit this immediately if Chic Magnolia is
       incorporated or begins trading under a different legal identity.
 - [ ] Review the Privacy notice and Terms with a qualified UK adviser before a public paid
       launch.

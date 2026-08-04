@@ -1,4 +1,4 @@
-# ChicMagnolia production smoke monitoring
+# Chic Magnolia production smoke monitoring
 
 The production smoke check verifies that the canonical public service is reachable, secure and
 serving the release that triggered the workflow. It complements unit tests, the production build,

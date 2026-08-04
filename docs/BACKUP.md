@@ -1,6 +1,6 @@
-# ChicMagnolia database backup and recovery
+# Chic Magnolia database backup and recovery
 
-This runbook protects the Supabase database used by the ChicMagnolia private beta. It covers
+This runbook protects the Supabase database used by the Chic Magnolia private beta. It covers
 logical database backups, encrypted off-site retention, decryption and restore drills. It does
 not replace the broader incident procedure in [`ROLLBACK.md`](ROLLBACK.md).
 
@@ -10,7 +10,7 @@ The connected Supabase project is on the Free plan. Supabase provides automatic 
 for Pro, Team and Enterprise projects, while Free projects are expected to export data and keep
 backups off-site. Point-in-Time Recovery is a paid add-on and also requires paid compute.
 
-Until the founder explicitly upgrades the project, ChicMagnolia uses the repository workflow:
+Until the founder explicitly upgrades the project, Chic Magnolia uses the repository workflow:
 
 ```text
 .github/workflows/encrypted-database-backup.yml
@@ -57,7 +57,7 @@ separate records for:
 - Supabase Auth provider, SMTP and redirect-URL settings;
 - GitHub repository secrets and variables;
 - Oxylabs and Browserless account configuration;
-- Supabase Storage object bytes if ChicMagnolia later starts using Storage.
+- Supabase Storage object bytes if Chic Magnolia later starts using Storage.
 
 The repository preserves application code and SQL migrations. Provider secrets must remain in
 provider secret stores and must never be copied into a backup artifact or committed to Git.

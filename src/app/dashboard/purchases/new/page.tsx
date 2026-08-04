@@ -37,7 +37,7 @@ export default async function NewPurchasePage({
   }
   if (!hasMonitoringAccess(subscription)) {
     redirect(
-      '/dashboard/billing?message=Subscribe to ChicMagnolia before adding a monitored purchase.',
+      '/dashboard/billing?message=Subscribe to Chic Magnolia before adding a monitored purchase.',
     );
   }
 
@@ -54,10 +54,10 @@ export default async function NewPurchasePage({
         </Link>
 
         <div className="bg-card mt-6 rounded-3xl border p-6 shadow-sm sm:p-10">
-          <p className="text-primary text-sm font-semibold">ChicMagnolia</p>
+          <p className="text-primary text-sm font-semibold">Chic Magnolia</p>
           <h1 className="mt-2 text-3xl font-semibold">Add a purchase</h1>
           <p className="text-muted-foreground mt-3">
-            Add the details from your order confirmation so ChicMagnolia can
+            Add the details from your order confirmation so Chic Magnolia can
             track the item.
           </p>
 

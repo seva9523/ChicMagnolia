@@ -41,7 +41,7 @@ export default async function SettingsPage({
 
         <div className="mt-6">
           <p className="text-primary text-sm font-semibold">
-            ChicMagnolia settings
+            Chic Magnolia settings
           </p>
           <h1 className="mt-2 text-3xl font-semibold">Account and privacy</h1>
           <p className="text-muted-foreground mt-3 max-w-2xl">
@@ -116,7 +116,7 @@ export default async function SettingsPage({
               Delete account permanently
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-red-800">
-              This removes the Supabase login and user-owned ChicMagnolia data.
+              This removes the Supabase login and user-owned Chic Magnolia data.
               If a Stripe customer is linked, deletion also requests immediate
               removal of that Stripe customer and immediately ends active
               subscriptions. This cannot be undone.
