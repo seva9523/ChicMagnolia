@@ -172,11 +172,19 @@ function exactNextSizeAvailability(html: string, size: string): boolean | null {
 }
 
 function selectedNextColourMatches(html: string, colour: string): boolean {
+  const escapedColour = escapeRegExp(colour.trim());
   const text = stripTags(html);
-  return new RegExp(
-    `\\bColour\\s*:\\s*${escapeRegExp(colour.trim())}(?=$|[\\s,./-])`,
+  const explicitColour = new RegExp(
+    `\\bColour\\s*:\\s*${escapedColour}(?=$|[\\s,./-])`,
     'i',
-  ).test(text);
+  );
+  if (explicitColour.test(text)) return true;
+
+  const heading = productHeading(html) ?? metaContent(html, 'og:title') ?? '';
+  return new RegExp(
+    `(?:^|[^a-z0-9])${escapedColour}(?=$|[^a-z0-9])`,
+    'i',
+  ).test(heading);
 }
 
 function exactNextVariantInStock(
