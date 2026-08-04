@@ -43,7 +43,6 @@ const livePageShape = `
         <div>Was £55</div>
         <div>4.5 (42)</div>
         <div>Product Code: V86-409</div>
-        <div>Colour:Green</div>
         <div role="group" data-testid="size-chips-button-group">
           <button class="unavailable round" aria-label="6 unavailable">6</button>
           <button class="unavailable round" aria-label="8 unavailable">8</button>
@@ -86,7 +85,7 @@ describe('nextAdapter', () => {
     expect(snapshot.variant).toEqual({ size: '14', colour: 'Green' });
   });
 
-  it('does not use another size or recommendation price', () => {
+  it('uses the colour-specific title without recommendation prices or sizes', () => {
     const snapshot = parseNextProductHtml(livePageShape, productUrl, {
       size: '14',
       colour: 'Green',
