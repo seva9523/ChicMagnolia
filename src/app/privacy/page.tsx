@@ -10,23 +10,23 @@ import {
 } from '@/lib/legal';
 
 export const metadata: Metadata = {
-  title: 'Privacy notice | ChicMagnolia',
+  title: 'Privacy notice | Chic Magnolia',
   description:
-    'How ChicMagnolia uses and protects personal data during the private beta.',
+    'How Chic Magnolia uses and protects personal data during the private beta.',
 };
 
 export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy notice"
-      intro="This notice explains what personal data ChicMagnolia uses, why it is needed and the choices available to you."
+      intro="This notice explains what personal data Chic Magnolia uses, why it is needed and the choices available to you."
       lastUpdated={LEGAL_LAST_UPDATED}
     >
       <section>
         <h2>1. Who is responsible for your data</h2>
         <p>
           {LEGAL_OPERATOR_NAME} is the data controller for the personal data
-          described in this notice. ChicMagnolia is currently operated as a
+          described in this notice. Chic Magnolia is currently operated as a
           private beta service from the United Kingdom.
         </p>
         <p>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Billing data:</strong> subscription status, billing-period
-            dates and Stripe customer or subscription references. ChicMagnolia
+            dates and Stripe customer or subscription references. Chic Magnolia
             does not receive or store your full card number.
           </li>
           <li>
@@ -71,8 +71,8 @@ export default function PrivacyPage() {
           <li>
             <strong>Anonymous analytics:</strong> aggregated page-view
             information such as route, referrer, country, browser and device
-            category. ChicMagnolia strips query strings before sending analytics
-            events.
+            category. Chic Magnolia strips query strings before sending
+            analytics events.
           </li>
         </ul>
       </section>
@@ -111,7 +111,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          ChicMagnolia does not sell personal data, use it for behavioural
+          Chic Magnolia does not sell personal data, use it for behavioural
           advertising or make solely automated decisions that have legal or
           similarly significant effects.
         </p>
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2>5. Service providers and recipients</h2>
-        <p>ChicMagnolia uses specialist providers to operate the service:</p>
+        <p>Chic Magnolia uses specialist providers to operate the service:</p>
         <ul>
           <li>
             Supabase for authentication, the application database and support
@@ -147,8 +147,8 @@ export default function PrivacyPage() {
         <p>
           Providers receive only the information needed for their role. Product
           URLs, saved variant details and technical request data may be
-          processed by scraping providers when a retailer check runs.
-          ChicMagnolia may also disclose information where required by law, to
+          processed by scraping providers when a retailer check runs. Chic
+          Magnolia may also disclose information where required by law, to
           protect users or to investigate misuse.
         </p>
       </section>
@@ -157,7 +157,7 @@ export default function PrivacyPage() {
         <h2>6. International processing</h2>
         <p>
           Some providers may process data outside the United Kingdom. Where this
-          happens, ChicMagnolia relies on the provider&apos;s applicable
+          happens, Chic Magnolia relies on the provider&apos;s applicable
           transfer mechanism and contractual or organisational safeguards. Use
           the support form for more information about a particular provider or
           transfer.
@@ -170,8 +170,8 @@ export default function PrivacyPage() {
           Supabase authentication uses cookies that are necessary to keep you
           signed in and protect dashboard access. Vercel Web Analytics is
           configured for aggregated analytics, does not use advertising cookies
-          and is not used to follow you across other websites. ChicMagnolia does
-          not currently use marketing or behavioural advertising cookies.
+          and is not used to follow you across other websites. Chic Magnolia
+          does not currently use marketing or behavioural advertising cookies.
         </p>
       </section>
 
@@ -196,7 +196,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             Stripe and other providers may retain billing or compliance records
-            under their own legal obligations even after the ChicMagnolia
+            under their own legal obligations even after the Chic Magnolia
             account is deleted.
           </li>
           <li>
@@ -235,21 +235,21 @@ export default function PrivacyPage() {
         <h2>10. Account deletion</h2>
         <p>
           Deleting an account removes the Supabase authentication user and
-          cascades deletion through the user-owned ChicMagnolia profile,
+          cascades deletion through the user-owned Chic Magnolia profile,
           purchases, price checks, notifications and subscription-state record.
-          If a Stripe customer is linked, ChicMagnolia first requests deletion
+          If a Stripe customer is linked, Chic Magnolia first requests deletion
           of that Stripe customer, which immediately ends active Stripe
           subscriptions and removes saved payment details from future use.
-          Historical records may remain where Stripe or ChicMagnolia must retain
-          them for legal, accounting, fraud-prevention, support or dispute
-          purposes.
+          Historical records may remain where Stripe or Chic Magnolia must
+          retain them for legal, accounting, fraud-prevention, support or
+          dispute purposes.
         </p>
       </section>
 
       <section>
         <h2>11. Security</h2>
         <p>
-          ChicMagnolia uses authenticated access, database row-level security,
+          Chic Magnolia uses authenticated access, database row-level security,
           server-only credentials, signed Stripe webhooks, encrypted HTTPS
           transport and restricted security headers. No internet service can
           guarantee absolute security, so please use a unique password and

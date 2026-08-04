@@ -18,7 +18,7 @@ const termsPage = source('src/app/terms/page.tsx');
 describe('public page metadata', () => {
   it('does not inherit the homepage canonical URL across every route', () => {
     expect(rootLayout).not.toContain("canonical: '/'");
-    expect(rootLayout).not.toContain("template: '%s | ChicMagnolia'");
+    expect(rootLayout).not.toContain("template: '%s | Chic Magnolia'");
   });
 
   it.each([
@@ -31,9 +31,9 @@ describe('public page metadata', () => {
   });
 
   it.each([
-    [supportPage, 'Support | ChicMagnolia'],
-    [privacyPage, 'Privacy notice | ChicMagnolia'],
-    [termsPage, 'Terms of service | ChicMagnolia'],
+    [supportPage, 'Support | Chic Magnolia'],
+    [privacyPage, 'Privacy notice | Chic Magnolia'],
+    [termsPage, 'Terms of service | Chic Magnolia'],
   ])('publishes one brand suffix in the public page title', (file, title) => {
     expect(file).toContain(`title: '${title}'`);
   });

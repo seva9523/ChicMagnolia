@@ -430,7 +430,7 @@ mkdir -p "$report_dir"
 chmod 700 "$report_dir"
 report_file="$report_dir/chicmagnolia-local-restore-$(date -u +%Y%m%dT%H%M%SZ).txt"
 {
-  printf 'ChicMagnolia local restore drill\n'
+  printf 'Chic Magnolia local restore drill\n'
   printf 'source_generated_at_utc=%s\n' "$(awk -F= '$1 == "generated_at_utc" { print $2; exit }' "$backup_dir/manifest.txt")"
   printf 'source_git_sha=%s\n' "$(awk -F= '$1 == "source_git_sha" { print $2; exit }' "$backup_dir/manifest.txt")"
   printf 'source_workflow_run_id=%s\n' "$(awk -F= '$1 == "workflow_run_id" { print $2; exit }' "$backup_dir/manifest.txt")"

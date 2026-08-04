@@ -1,4 +1,4 @@
-# Verify an encrypted ChicMagnolia database backup locally
+# Verify an encrypted Chic Magnolia database backup locally
 
 Use this procedure after downloading an artifact from **GitHub Actions → Encrypted database
 backup**. It verifies that the encrypted file arrived intact, decrypts it with the offline `age`
@@ -36,7 +36,7 @@ copy or share the private identity file contents.
 
 ## One-command verification
 
-Run this from a local clone of the ChicMagnolia repository. Replace the artifact ZIP path when
+Run this from a local clone of the Chic Magnolia repository. Replace the artifact ZIP path when
 the downloaded name differs:
 
 ```bash

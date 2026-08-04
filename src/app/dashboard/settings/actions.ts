@@ -63,15 +63,15 @@ export async function deleteAccount(formData: FormData) {
   if (deletionError) {
     settingsRedirect(
       stripeCustomerRemoved
-        ? 'Stripe billing was removed, but the ChicMagnolia account could not be deleted. Contact support.'
-        : 'The ChicMagnolia account could not be deleted. Please try again.',
+        ? 'Stripe billing was removed, but the Chic Magnolia account could not be deleted. Contact support.'
+        : 'The Chic Magnolia account could not be deleted. Please try again.',
     );
   }
 
   await supabase.auth.signOut({ scope: 'local' });
   redirect(
     `/login?message=${encodeURIComponent(
-      'Your ChicMagnolia account and user-owned application data have been deleted.',
+      'Your Chic Magnolia account and user-owned application data have been deleted.',
     )}`,
   );
 }

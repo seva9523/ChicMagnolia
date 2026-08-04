@@ -10,21 +10,21 @@ import {
 } from '@/lib/legal';
 
 export const metadata: Metadata = {
-  title: 'Terms of service | ChicMagnolia',
-  description: 'Terms for using the ChicMagnolia private beta service.',
+  title: 'Terms of service | Chic Magnolia',
+  description: 'Terms for using the Chic Magnolia private beta service.',
 };
 
 export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of service"
-      intro="These terms apply when you create an account or use the ChicMagnolia private beta."
+      intro="These terms apply when you create an account or use the Chic Magnolia private beta."
       lastUpdated={LEGAL_LAST_UPDATED}
     >
       <section>
-        <h2>1. About ChicMagnolia</h2>
+        <h2>1. About Chic Magnolia</h2>
         <p>
-          ChicMagnolia is operated in the United Kingdom by{' '}
+          Chic Magnolia is operated in the United Kingdom by{' '}
           {LEGAL_OPERATOR_NAME}. It is a private beta service that helps users
           monitor a saved fashion product&apos;s current price and
           selected-variant stock during a return window. Questions can be
@@ -47,11 +47,11 @@ export default function TermsPage() {
         <h2>3. What the service does</h2>
         <p>
           You provide a retailer product URL, purchase information, saved size
-          and colour, and the return deadline shown for your order. ChicMagnolia
-          attempts to retrieve public retailer information and records current
-          price and stock signals for the saved variant. When configured, it may
-          email a price-drop alert if the saved item appears cheaper, in stock
-          and still within the entered return window.
+          and colour, and the return deadline shown for your order. Chic
+          Magnolia attempts to retrieve public retailer information and records
+          current price and stock signals for the saved variant. When
+          configured, it may email a price-drop alert if the saved item appears
+          cheaper, in stock and still within the entered return window.
         </p>
       </section>
 
@@ -63,8 +63,8 @@ export default function TermsPage() {
             rules can change without notice.
           </li>
           <li>
-            ChicMagnolia is not affiliated with, sponsored by or endorsed by the
-            supported retailers unless expressly stated.
+            Chic Magnolia is not affiliated with, sponsored by or endorsed by
+            the supported retailers unless expressly stated.
           </li>
           <li>
             A check or alert is informational. The retailer page and your order
@@ -76,7 +76,7 @@ export default function TermsPage() {
             contacting a retailer.
           </li>
           <li>
-            ChicMagnolia cannot guarantee that a retailer will accept a return,
+            Chic Magnolia cannot guarantee that a retailer will accept a return,
             honour a price, restock an item or keep a product page available.
           </li>
         </ul>
@@ -98,7 +98,7 @@ export default function TermsPage() {
         <h2>6. Subscription and billing</h2>
         <p>
           While payments remain in Stripe test mode, no real charge is taken.
-          When live billing is enabled, ChicMagnolia is intended to offer one
+          When live billing is enabled, Chic Magnolia is intended to offer one
           recurring monthly plan at the price shown before Checkout. Stripe
           hosts Checkout, invoices, payment-method management and the Customer
           Portal.
@@ -111,14 +111,14 @@ export default function TermsPage() {
             until that period ends.
           </li>
           <li>
-            Deleting the ChicMagnolia account is different: it requests
+            Deleting the Chic Magnolia account is different: it requests
             immediate deletion of the linked Stripe customer and immediate
             ending of active subscriptions.
           </li>
           <li>
             Prices, renewal terms and any applicable taxes will be presented
-            before a live purchase. ChicMagnolia will not introduce another plan
-            or charge without showing the applicable terms.
+            before a live purchase. Chic Magnolia will not introduce another
+            plan or charge without showing the applicable terms.
           </li>
         </ul>
         <p>
@@ -148,7 +148,7 @@ export default function TermsPage() {
             resell the service, scrape it in bulk or use it to build a competing
             dataset;
           </li>
-          <li>misrepresent ChicMagnolia data as a retailer guarantee.</li>
+          <li>misrepresent Chic Magnolia data as a retailer guarantee.</li>
         </ul>
         <p>
           We may restrict or suspend access where reasonably necessary to
@@ -160,7 +160,7 @@ export default function TermsPage() {
       <section>
         <h2>8. Your content and licence</h2>
         <p>
-          You keep ownership of information you submit. You give ChicMagnolia a
+          You keep ownership of information you submit. You give Chic Magnolia a
           limited permission to host, process, copy and transmit that
           information only as needed to provide, secure and improve the service.
           Do not submit data that you do not have the right to use.
@@ -170,7 +170,7 @@ export default function TermsPage() {
       <section>
         <h2>9. Intellectual property</h2>
         <p>
-          ChicMagnolia&apos;s software, design, branding and original content
+          Chic Magnolia&apos;s software, design, branding and original content
           remain owned by their respective owner. Retailer names, product
           images, descriptions and trademarks belong to the relevant retailers
           or rights holders. These terms do not transfer ownership of either
@@ -181,7 +181,7 @@ export default function TermsPage() {
       <section>
         <h2>10. Responsibility and liability</h2>
         <p>
-          ChicMagnolia is responsible for losses that are a foreseeable result
+          Chic Magnolia is responsible for losses that are a foreseeable result
           of our failure to use reasonable care or comply with these terms. We
           are not responsible for losses caused by retailer decisions,
           inaccurate information supplied by you, an unavailable retailer page,

@@ -37,7 +37,7 @@ describe('retailer selection validation', () => {
     expect(result).toEqual({
       ok: false,
       message:
-        'ChicMagnolia currently supports Zara, Mango, Next, ASOS, UNIQLO, H&M and COS UK product pages.',
+        'Chic Magnolia currently supports Zara, Mango, Next, ASOS, UNIQLO, H&M and COS UK product pages.',
     });
   });
 

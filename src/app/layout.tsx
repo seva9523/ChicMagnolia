@@ -18,7 +18,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_APP_ORIGIN),
-  title: 'ChicMagnolia',
+  title: 'Chic Magnolia',
   description: 'Never miss a price drop within your return window.',
 };
 

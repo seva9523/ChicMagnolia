@@ -1,6 +1,6 @@
 # Zero-cost local database restore drill
 
-This runbook verifies that an encrypted ChicMagnolia backup can be restored without creating a
+This runbook verifies that an encrypted Chic Magnolia backup can be restored without creating a
 second hosted Supabase project or changing the production database. It runs a temporary Supabase
 Postgres instance on the founder's own computer, restores the verified SQL files, performs
 security and row-count checks, then destroys the temporary database.
@@ -24,7 +24,7 @@ also creates a unique Docker bridge network with
 Postgres, passes the network explicitly to the Supabase CLI and removes the network afterward.
 
 Every Supabase CLI command receives an explicit temporary `--workdir`. The helper therefore does
-not initialize `supabase/config.toml` or other local CLI state inside the ChicMagnolia repository.
+not initialize `supabase/config.toml` or other local CLI state inside the Chic Magnolia repository.
 
 ## Prerequisites on macOS
 
@@ -104,7 +104,7 @@ The helper:
 6. creates and verifies a dedicated Docker network whose host binding is `127.0.0.1`;
 7. starts only local Supabase Postgres on that network, matching the first backup's Postgres release by default;
 8. restores roles, schema and data in one transaction with `ON_ERROR_STOP=1`;
-9. verifies all expected ChicMagnolia tables exist;
+9. verifies all expected Chic Magnolia tables exist;
 10. verifies RLS is enabled on personal-data and internal tables;
 11. verifies `support_requests` and `stripe_webhook_events` have no browser-facing policies;
 12. verifies internal database functions are not executable by `anon` or `authenticated`;

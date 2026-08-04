@@ -21,7 +21,7 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
       RESEND_API_KEY: re_placeholder
-      EMAIL_FROM: ChicMagnolia <test@example.com>
+      EMAIL_FROM: Chic Magnolia <test@example.com>
 
     steps:
       - name: Check out repository

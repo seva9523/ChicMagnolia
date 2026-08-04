@@ -23,13 +23,13 @@ export default function Home() {
           </div>
 
           <p className="text-primary mb-3 text-sm font-semibold tracking-[0.2em] uppercase">
-            ChicMagnolia
+            Chic Magnolia
           </p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight font-semibold sm:text-6xl">
             Catch price drops before your return window closes.
           </h1>
           <p className="text-muted-foreground mt-6 max-w-xl text-lg leading-8">
-            ChicMagnolia helps UK shoppers monitor eligible purchases and act
+            Chic Magnolia helps UK shoppers monitor eligible purchases and act
             when the same saved colour and size becomes cheaper.
           </p>
 

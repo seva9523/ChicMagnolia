@@ -201,25 +201,25 @@ assert_public_page \
   '/' \
   'Catch price drops before your return window closes.' \
   'home' \
-  'ChicMagnolia' \
+  'Chic Magnolia' \
   "${APP_URL}"
 assert_public_page \
   '/privacy' \
   'Privacy notice' \
   'privacy' \
-  'Privacy notice | ChicMagnolia' \
+  'Privacy notice | Chic Magnolia' \
   "${APP_URL}/privacy"
 assert_public_page \
   '/terms' \
   'Terms of service' \
   'terms' \
-  'Terms of service | ChicMagnolia' \
+  'Terms of service | Chic Magnolia' \
   "${APP_URL}/terms"
 assert_public_page \
   '/support' \
   'Send request' \
   'support' \
-  'Support | ChicMagnolia' \
+  'Support | Chic Magnolia' \
   "${APP_URL}/support"
 assert_private_route_redirect
 assert_public_metadata

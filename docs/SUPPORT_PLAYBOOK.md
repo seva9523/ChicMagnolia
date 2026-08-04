@@ -1,4 +1,4 @@
-# ChicMagnolia private beta support playbook
+# Chic Magnolia private beta support playbook
 
 Use these replies as starting points, not automatic promises. Read the stored support request
 and check the relevant Supabase, Vercel, Stripe, Resend or retailer records before responding.
@@ -27,7 +27,7 @@ Depending on the issue, ask only for:
 - the account email address already used in the request;
 - the affected product URL;
 - saved colour and saved size;
-- expected result and actual ChicMagnolia result;
+- expected result and actual Chic Magnolia result;
 - approximate date and time of the action;
 - a screenshot with personal information, cookies and payment details removed;
 - Stripe invoice or subscription ID when visible to the user, but never a full card number.
@@ -41,7 +41,7 @@ Hi [Name],
 
 Thanks for reporting this. I’m checking the retailer page and the exact variant that you saved.
 
-Please reply with the product URL, saved colour, saved size, the price or stock result shown by ChicMagnolia, and what the retailer page showed at approximately the same time. A screenshot is helpful if it does not contain login details, cookies or payment information.
+Please reply with the product URL, saved colour, saved size, the price or stock result shown by Chic Magnolia, and what the retailer page showed at approximately the same time. A screenshot is helpful if it does not contain login details, cookies or payment information.
 
 Retailer pages can change or block automated access, so I will compare the current page structure, pause the affected adapter if it is producing unsafe results, and add a regression test before re-enabling any repaired parser.
 
@@ -49,7 +49,7 @@ Your support reference is [Reference].
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 After responding:
@@ -63,12 +63,12 @@ After responding:
 
 ## Billing access or subscription status
 
-Subject: `We are checking your ChicMagnolia billing access`
+Subject: `We are checking your Chic Magnolia billing access`
 
 ```text
 Hi [Name],
 
-Thanks for letting me know. I’m checking the Stripe sandbox/live environment, webhook delivery and the subscription status linked to your ChicMagnolia account.
+Thanks for letting me know. I’m checking the Stripe sandbox/live environment, webhook delivery and the subscription status linked to your Chic Magnolia account.
 
 Please send the approximate time of Checkout or cancellation and any invoice or subscription reference visible in Stripe. Do not send your card number, CVC, password or authentication code.
 
@@ -78,7 +78,7 @@ Your support reference is [Reference].
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 Checks:
@@ -97,7 +97,7 @@ Subject: `We are checking your account-deletion request`
 ```text
 Hi [Name],
 
-Thanks for contacting ChicMagnolia. I’m checking whether the account, user-owned application data and any linked Stripe customer were removed successfully.
+Thanks for contacting Chic Magnolia. I’m checking whether the account, user-owned application data and any linked Stripe customer were removed successfully.
 
 Please confirm the email address used for the account and the approximate time you submitted deletion. Do not send your password or any payment-card details.
 
@@ -107,7 +107,7 @@ Your support reference is [Reference].
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 Checks:
@@ -121,7 +121,7 @@ Checks:
 
 ## Account access or missing verification email
 
-Subject: `Help with your ChicMagnolia account`
+Subject: `Help with your Chic Magnolia account`
 
 ```text
 Hi [Name],
@@ -139,7 +139,7 @@ Your support reference is [Reference].
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 Checks:
@@ -152,7 +152,7 @@ Checks:
 
 ## Privacy request
 
-Subject: `Your ChicMagnolia privacy request`
+Subject: `Your Chic Magnolia privacy request`
 
 ```text
 Hi [Name],
@@ -169,7 +169,7 @@ tools do not address the request, I will explain the next step and expected resp
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 Checks:
@@ -182,7 +182,7 @@ Checks:
 
 ## Security report
 
-Subject: `ChicMagnolia security report received`
+Subject: `Chic Magnolia security report received`
 
 ```text
 Hi [Name],
@@ -199,7 +199,7 @@ the issue until it has been assessed and repaired.
 
 Best,
 Sevinj
-ChicMagnolia
+Chic Magnolia
 ```
 
 Immediate actions:

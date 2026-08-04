@@ -42,7 +42,7 @@ export function validateRetailerSelection(
   if (!adapter) {
     return {
       ok: false,
-      message: `ChicMagnolia currently supports ${supportedRetailersSentence()} UK product pages.`,
+      message: `Chic Magnolia currently supports ${supportedRetailersSentence()} UK product pages.`,
     };
   }
 
