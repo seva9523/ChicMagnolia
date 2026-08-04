@@ -16,7 +16,9 @@ describe('Terms of service', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/personal, single-use and intended for the email address/i),
+      screen.getByText(
+        /personal, single-use and intended for the email address/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /Important retailer limitations/i }),
@@ -25,7 +27,9 @@ describe('Terms of service', () => {
       screen.getByRole('heading', { name: /Subscription and billing/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/private-beta invitation access is recorded separately/i),
+      screen.getByText(
+        /private-beta invitation access is recorded separately/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Nothing in these terms removes a statutory/i),
