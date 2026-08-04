@@ -75,7 +75,9 @@ function productIdFromUrl(url: URL): string | null {
 }
 
 function productHeading(html: string): string | null {
-  const heading = stripTags(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '');
+  const heading = stripTags(
+    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '',
+  );
   return heading || null;
 }
 
@@ -137,10 +139,14 @@ function exactNextSizeAvailability(html: string, size: string): boolean | null {
   const aliases = nextSizeAliases(size);
   const matches: boolean[] = [];
 
-  for (const match of html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)) {
+  for (const match of html.matchAll(
+    /<button\b([^>]*)>([\s\S]*?)<\/button>/gi,
+  )) {
     const attributes = decodeHtml(match[1] ?? '');
     const text = stripTags(match[2] ?? '');
-    const ariaLabel = decodeHtml(attributeValue(attributes, 'aria-label') ?? '');
+    const ariaLabel = decodeHtml(
+      attributeValue(attributes, 'aria-label') ?? '',
+    );
     const isExactSize = aliases.some((alias) => {
       const escaped = escapeRegExp(alias);
       return (
@@ -168,7 +174,7 @@ function exactNextSizeAvailability(html: string, size: string): boolean | null {
 function selectedNextColourMatches(html: string, colour: string): boolean {
   const text = stripTags(html);
   return new RegExp(
-    `\\bColour\\s*:\\s*${escapeRegExp(colour.trim())}(?=$|[\\s,./-])`,
+    `\bColour\s*:\s*${escapeRegExp(colour.trim())}(?=$|[\s,./-])`,
     'i',
   ).test(text);
 }
