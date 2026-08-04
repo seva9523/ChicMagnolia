@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { SUPPORTED_RETAILER_NAMES } from '@/retailers/catalog';
 
 import Home from './page';
+
+afterEach(cleanup);
 
 describe('Home', () => {
   it('offers account creation and sign-in', () => {
