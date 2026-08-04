@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   quality:
@@ -24,29 +24,14 @@ jobs:
       EMAIL_FROM: Chic Magnolia <test@example.com>
 
     steps:
-      - name: Check out the brand branch
+      - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: sprint-7-brand-spacing
-          fetch-depth: 0
 
-      - name: Apply the final customer-facing name correction
-        shell: bash
+      - name: Validate shell script syntax
         run: |
-          set -euo pipefail
-
-          python <<'PY'
-          from pathlib import Path
-
-          readme = Path('README.md')
-          content = readme.read_text(encoding='utf-8')
-          content = content.replace('`ChicMagnolia Monthly`', '`Chic Magnolia Monthly`')
-          readme.write_text(content, encoding='utf-8')
-          Path('.brand-spacing-codemod-complete').write_text(
-              'Temporary marker. Delete after the generated commit is verified.\n',
-              encoding='utf-8',
-          )
-          PY
+          bash -n scripts/production-smoke.sh
+          bash -n scripts/verify-encrypted-backup.sh
+          bash -n scripts/restore-backup-locally.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -57,37 +42,6 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Format the generated changes
-        run: npm run format
-
-      - name: Commit the final generated correction
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md .brand-spacing-codemod-complete
-          git commit -m 'Finish the Chic Magnolia brand correction'
-          git push origin HEAD:sprint-7-brand-spacing
-
-      - name: Audit remaining compact-name occurrences
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -RIn \
-            --exclude-dir=.git \
-            --exclude-dir=node_modules \
-            --exclude-dir=.next \
-            --exclude='package-lock.json' \
-            'ChicMagnolia' . || true
-
-      - name: Validate shell script syntax
-        run: |
-          bash -n scripts/production-smoke.sh
-          bash -n scripts/verify-encrypted-backup.sh
-          bash -n scripts/restore-backup-locally.sh
 
       - name: Verify formatting
         run: npm run format:check
