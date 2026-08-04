@@ -8,9 +8,16 @@ type AuthFormProps = {
   mode: 'login' | 'sign-up' | 'forgot' | 'reset';
   error?: string;
   message?: string;
+  inviteToken?: string;
 };
 
-export function AuthForm({ action, mode, error, message }: AuthFormProps) {
+export function AuthForm({
+  action,
+  mode,
+  error,
+  message,
+  inviteToken,
+}: AuthFormProps) {
   const isSignUp = mode === 'sign-up';
   const isReset = mode === 'reset';
   const asksForEmail = !isReset;
@@ -21,6 +28,46 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
     forgot: 'Reset your password',
     reset: 'Choose a new password',
   }[mode];
+
+  if (isSignUp && !inviteToken) {
+    return (
+      <>
+        <main className="flex min-h-screen items-center justify-center px-6 py-16">
+          <section className="bg-card w-full max-w-md rounded-3xl border p-8 shadow-sm">
+            <Link href="/" className="text-primary text-sm font-semibold">
+              Chic Magnolia
+            </Link>
+            <h1 className="mt-4 text-3xl font-semibold">
+              Private beta is invite-only
+            </h1>
+            <p className="text-muted-foreground mt-3 text-sm leading-6">
+              Create your account from the personal invitation link sent to you.
+              Private-beta access is free and each invitation can be used once.
+            </p>
+            {error ? (
+              <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </p>
+            ) : null}
+            {message ? (
+              <p className="mt-5 rounded-xl bg-green-50 p-3 text-sm text-green-700">
+                {message}
+              </p>
+            ) : null}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/support">Contact support</Link>
+              </Button>
+            </div>
+          </section>
+        </main>
+        <SiteFooter />
+      </>
+    );
+  }
 
   return (
     <>
@@ -35,6 +82,12 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
             closes.
           </p>
 
+          {isSignUp ? (
+            <p className="mt-5 rounded-xl bg-green-50 p-3 text-sm leading-6 text-green-800">
+              Private beta invitation detected. Use the same email address that
+              received the invitation. No payment is required during the beta.
+            </p>
+          ) : null}
           {error ? (
             <p className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -47,6 +100,13 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
           ) : null}
 
           <form action={action} className="mt-6 space-y-4">
+            {isSignUp ? (
+              <input
+                name="betaInviteToken"
+                type="hidden"
+                value={inviteToken}
+              />
+            ) : null}
             {isSignUp ? (
               <label className="block text-sm font-medium">
                 Full name
@@ -124,7 +184,7 @@ export function AuthForm({ action, mode, error, message }: AuthFormProps) {
 
           <div className="text-muted-foreground mt-6 flex justify-between text-sm">
             {mode === 'login' ? (
-              <Link href="/sign-up">Create account</Link>
+              <Link href="/sign-up">Private beta access</Link>
             ) : (
               <Link href="/login">Back to login</Link>
             )}
