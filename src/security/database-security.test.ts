@@ -10,6 +10,10 @@ function migration(name: string) {
   );
 }
 
+function createPolicyStatements(sql: string) {
+  return sql.match(/create policy[\s\S]*?;/gi) ?? [];
+}
+
 describe('database privacy controls', () => {
   it('cascades user deletion through every user-owned table', () => {
     const files = [
@@ -76,26 +80,26 @@ describe('database privacy controls', () => {
 
   it('keeps private beta invitation tokens hashed and server-controlled', () => {
     const sql = migration('202608040001_create_private_beta_access.sql');
+    const policies = createPolicyStatements(sql);
+    const invitePolicies = policies.filter((policy) =>
+      /on public\.beta_invites/i.test(policy),
+    );
+    const grantPolicies = policies.filter((policy) =>
+      /on public\.beta_access_grants/i.test(policy),
+    );
 
     expect(sql).toMatch(/token_hash text not null unique/i);
     expect(sql).toMatch(/token_hash ~ '\^\[0-9a-f\]\{64\}\$'/i);
     expect(sql).toMatch(
       /alter table public\.beta_invites enable row level security/i,
     );
-    expect(sql).not.toMatch(/create policy[^;]+beta_invites/i);
+    expect(invitePolicies).toEqual([]);
     expect(sql).toMatch(
       /alter table public\.beta_access_grants enable row level security/i,
     );
-    expect(sql).toMatch(/Users can view their own beta access/i);
-    expect(sql).not.toMatch(
-      /create policy[^;]+beta_access_grants[\s\S]+?for insert/i,
-    );
-    expect(sql).not.toMatch(
-      /create policy[^;]+beta_access_grants[\s\S]+?for update/i,
-    );
-    expect(sql).not.toMatch(
-      /create policy[^;]+beta_access_grants[\s\S]+?for delete/i,
-    );
+    expect(grantPolicies).toHaveLength(1);
+    expect(grantPolicies[0]).toMatch(/for select/i);
+    expect(grantPolicies[0]).not.toMatch(/for (insert|update|delete)/i);
     expect(sql).toMatch(
       /create or replace function public\.redeem_beta_invite/i,
     );
