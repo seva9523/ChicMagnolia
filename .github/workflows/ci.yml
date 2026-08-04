@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   quality:
@@ -24,44 +24,14 @@ jobs:
       EMAIL_FROM: Chic Magnolia <test@example.com>
 
     steps:
-      - name: Check out the brand branch
+      - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: sprint-7-brand-spacing
-          fetch-depth: 0
 
-      - name: Correct the remaining user-facing brand strings
-        shell: bash
+      - name: Validate shell script syntax
         run: |
-          set -euo pipefail
-
-          python <<'PY'
-          from pathlib import Path
-
-          replace_all = [
-              Path('src/components/site-footer.tsx'),
-              Path('scripts/production-smoke.sh'),
-              Path('docs/SUPPORT_PLAYBOOK.md'),
-              Path('docs/ROLLBACK.md'),
-          ]
-
-          for path in replace_all:
-              content = path.read_text(encoding='utf-8')
-              path.write_text(
-                  content.replace('ChicMagnolia', 'Chic Magnolia'),
-                  encoding='utf-8',
-              )
-
-          restore = Path('scripts/restore-backup-locally.sh')
-          restore_content = restore.read_text(encoding='utf-8')
-          restore.write_text(
-              restore_content.replace(
-                  'ChicMagnolia local restore drill',
-                  'Chic Magnolia local restore drill',
-              ),
-              encoding='utf-8',
-          )
-          PY
+          bash -n scripts/production-smoke.sh
+          bash -n scripts/verify-encrypted-backup.sh
+          bash -n scripts/restore-backup-locally.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -72,31 +42,6 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-
-      - name: Format the generated changes
-        run: npm run format
-
-      - name: Commit the remaining brand corrections
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            src/components/site-footer.tsx \
-            scripts/production-smoke.sh \
-            scripts/restore-backup-locally.sh \
-            docs/SUPPORT_PLAYBOOK.md \
-            docs/ROLLBACK.md
-          git commit -m 'Finish user-facing Chic Magnolia branding'
-          git push origin HEAD:sprint-7-brand-spacing
-
-      - name: Validate shell script syntax
-        run: |
-          bash -n scripts/production-smoke.sh
-          bash -n scripts/verify-encrypted-backup.sh
-          bash -n scripts/restore-backup-locally.sh
 
       - name: Verify formatting
         run: npm run format:check
