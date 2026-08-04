@@ -43,6 +43,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Print canonical Next parser formatting
+        run: npx prettier src/retailers/next.ts
+
       - name: Verify formatting
         run: npm run format:check
 
