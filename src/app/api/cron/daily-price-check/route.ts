@@ -4,14 +4,13 @@ import { NextResponse } from 'next/server';
 
 import { serverEnv } from '@/lib/env/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import type { BetaAccessGrant } from '@/services/beta-access';
+import { hasMonitoringEntitlement } from '@/services/monitoring-access';
 import {
   monitorTrackedPurchase,
   type TrackedPurchaseForCheck,
 } from '@/services/price-monitoring';
-import {
-  hasMonitoringAccess,
-  type SubscriptionRecord,
-} from '@/services/subscription-access';
+import type { SubscriptionRecord } from '@/services/subscription-access';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,32 +80,54 @@ export async function POST(request: Request) {
     ...new Set(duePurchases.map((purchase) => purchase.user_id)),
   ];
   const subscriptions = new Map<string, SubscriptionRecord>();
+  const betaAccessGrants = new Map<string, BetaAccessGrant>();
 
   if (dueUserIds.length > 0) {
-    const { data: subscriptionRows, error: subscriptionError } = await supabase
-      .from('subscriptions')
-      .select(
-        'user_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, cancel_at_period_end, current_period_start, current_period_end, trial_end, ended_at, last_event_created',
-      )
-      .in('user_id', dueUserIds);
+    const [subscriptionResult, betaAccessResult] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select(
+          'user_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, cancel_at_period_end, current_period_start, current_period_end, trial_end, ended_at, last_event_created',
+        )
+        .in('user_id', dueUserIds),
+      supabase
+        .from('beta_access_grants')
+        .select('user_id, invite_id, starts_at, expires_at, revoked_at')
+        .in('user_id', dueUserIds),
+    ]);
 
-    if (subscriptionError) {
+    if (subscriptionResult.error) {
       return NextResponse.json(
         {
-          error: `Could not load subscription access: ${subscriptionError.message}`,
+          error: `Could not load subscription access: ${subscriptionResult.error.message}`,
+        },
+        { status: 500 },
+      );
+    }
+    if (betaAccessResult.error) {
+      return NextResponse.json(
+        {
+          error: `Could not load private beta access: ${betaAccessResult.error.message}`,
         },
         { status: 500 },
       );
     }
 
-    for (const subscription of (subscriptionRows ??
+    for (const subscription of (subscriptionResult.data ??
       []) as SubscriptionRecord[]) {
       subscriptions.set(subscription.user_id, subscription);
+    }
+    for (const grant of (betaAccessResult.data ?? []) as BetaAccessGrant[]) {
+      betaAccessGrants.set(grant.user_id, grant);
     }
   }
 
   const eligibleDuePurchases = duePurchases.filter((purchase) =>
-    hasMonitoringAccess(subscriptions.get(purchase.user_id), now),
+    hasMonitoringEntitlement(
+      subscriptions.get(purchase.user_id),
+      betaAccessGrants.get(purchase.user_id),
+      now,
+    ),
   );
   const purchases = eligibleDuePurchases.slice(0, BATCH_SIZE);
   const userIds = [...new Set(purchases.map((purchase) => purchase.user_id))];
@@ -139,6 +160,7 @@ export async function POST(request: Request) {
     ),
   );
 
+  const ineligibleSkipped = duePurchases.length - eligibleDuePurchases.length;
   const response = {
     processed: purchases.length,
     succeeded: outcomes.filter((outcome) => outcome.check === 'succeeded')
@@ -156,7 +178,8 @@ export async function POST(request: Request) {
     ).length,
     alertFailures: outcomes.filter((outcome) => outcome.alert === 'failed')
       .length,
-    billingIneligibleSkipped: duePurchases.length - eligibleDuePurchases.length,
+    accessIneligibleSkipped: ineligibleSkipped,
+    billingIneligibleSkipped: ineligibleSkipped,
     remaining: Math.max(0, eligibleDuePurchases.length - purchases.length),
     checkedAt: now.toISOString(),
     profileLookupError,
