@@ -174,7 +174,7 @@ function exactNextSizeAvailability(html: string, size: string): boolean | null {
 function selectedNextColourMatches(html: string, colour: string): boolean {
   const text = stripTags(html);
   return new RegExp(
-    `\bColour\s*:\s*${escapeRegExp(colour.trim())}(?=$|[\s,./-])`,
+    `\\bColour\\s*:\\s*${escapeRegExp(colour.trim())}(?=$|[\\s,./-])`,
     'i',
   ).test(text);
 }
