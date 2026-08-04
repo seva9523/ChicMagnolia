@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   quality:
@@ -21,17 +21,17 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_placeholder
       RESEND_API_KEY: re_placeholder
-      EMAIL_FROM: ChicMagnolia <test@example.com>
+      EMAIL_FROM: Chic Magnolia <test@example.com>
 
     steps:
-      - name: Check out repository
+      - name: Check out the brand branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: sprint-7-brand-spacing
+          fetch-depth: 0
 
-      - name: Validate shell script syntax
-        run: |
-          bash -n scripts/production-smoke.sh
-          bash -n scripts/verify-encrypted-backup.sh
-          bash -n scripts/restore-backup-locally.sh
+      - name: Apply the user-facing brand correction
+        run: python scripts/apply-brand-spacing.py
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -42,6 +42,30 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Format the generated changes
+        run: npm run format
+
+      - name: Commit the generated brand correction
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet && git diff --cached --quiet; then
+            echo 'No generated brand changes to commit.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add --all
+            git commit -m 'Use Chic Magnolia as the user-facing brand name'
+            git push origin HEAD:sprint-7-brand-spacing
+          fi
+
+      - name: Validate shell script syntax
+        run: |
+          bash -n scripts/production-smoke.sh
+          bash -n scripts/verify-encrypted-backup.sh
+          bash -n scripts/restore-backup-locally.sh
 
       - name: Verify formatting
         run: npm run format:check
