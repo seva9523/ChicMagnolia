@@ -10,7 +10,9 @@ describe('Privacy notice', () => {
     expect(
       screen.getByRole('heading', { name: 'Privacy notice' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Invitation and beta-access data:/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Invitation and beta-access data:/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/does not store the plaintext invitation token/i),
     ).toBeInTheDocument();
