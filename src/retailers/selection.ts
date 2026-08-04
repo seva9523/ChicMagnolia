@@ -18,8 +18,7 @@ export type InvalidRetailerSelection = {
 };
 
 export type RetailerSelectionResult =
-  | ValidRetailerSelection
-  | InvalidRetailerSelection;
+  ValidRetailerSelection | InvalidRetailerSelection;
 
 export function validateRetailerSelection(
   retailerName: string,
