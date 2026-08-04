@@ -1,16 +1,20 @@
 name: Apply Chic Magnolia brand spacing
 
 on:
-  push:
+  pull_request:
     branches:
-      - sprint-7-brand-spacing
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   apply-brand-spacing:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'sprint-7-brand-spacing' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
