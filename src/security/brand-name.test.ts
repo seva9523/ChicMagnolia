@@ -47,9 +47,9 @@ function markdownProse(markdown: string): string {
 }
 
 describe('product branding', () => {
-  it('uses the spaced Chic Magnolia name in user-facing source', () => {
+  it('uses the spaced Chic Magnolia name in user-facing runtime source', () => {
     const violations = filesMatching(sourceRoot, /\.(?:ts|tsx)$/)
-      .filter((path) => !path.endsWith('brand-name.test.ts'))
+      .filter((path) => !/\.test\.(?:ts|tsx)$/.test(path))
       .filter((path) => standaloneBrandPattern.test(readFileSync(path, 'utf8')))
       .map((path) => relative(repositoryRoot, path));
 
@@ -69,6 +69,37 @@ describe('product branding', () => {
       .map((path) => relative(repositoryRoot, path));
 
     expect(violations).toEqual([]);
+  });
+
+  it('uses the spaced name in customer-support response templates', () => {
+    const supportPlaybook = readFileSync(
+      join(docsRoot, 'SUPPORT_PLAYBOOK.md'),
+      'utf8',
+    );
+
+    expect(supportPlaybook).not.toContain(unspacedBrand);
+  });
+
+  it('keeps operational checks aligned with the public brand', () => {
+    const productionSmoke = readFileSync(
+      join(repositoryRoot, 'scripts/production-smoke.sh'),
+      'utf8',
+    );
+    const restoreDrill = readFileSync(
+      join(repositoryRoot, 'scripts/restore-backup-locally.sh'),
+      'utf8',
+    );
+
+    expect(productionSmoke).not.toContain(unspacedBrand);
+    expect(restoreDrill).toContain('Chic Magnolia local restore drill');
+  });
+
+  it('documents the current Resend automation name', () => {
+    const rollbackGuide = readFileSync(join(docsRoot, 'ROLLBACK.md'), 'utf8');
+
+    expect(rollbackGuide).toContain(
+      '`Chic Magnolia support request notifications` automation.',
+    );
   });
 
   it('documents the customer-facing Stripe product with the spaced name', () => {
