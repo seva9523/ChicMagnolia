@@ -71,6 +71,13 @@ describe('product branding', () => {
     expect(violations).toEqual([]);
   });
 
+  it('documents the customer-facing Stripe product with the spaced name', () => {
+    const readme = readFileSync(join(repositoryRoot, 'README.md'), 'utf8');
+
+    expect(readme).toContain('`Chic Magnolia Monthly`');
+    expect(readme).not.toContain('`ChicMagnolia Monthly`');
+  });
+
   it('uses the spaced name in the public email sender example', () => {
     const environmentExample = readFileSync(
       join(repositoryRoot, '.env.example'),
