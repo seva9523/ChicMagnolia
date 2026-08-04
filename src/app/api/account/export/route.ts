@@ -28,47 +28,59 @@ export async function GET() {
   }
 
   try {
-    const [profile, legal, purchases, checks, notifications, subscription] =
-      await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, email, full_name, created_at, updated_at')
-          .eq('id', user.id)
-          .maybeSingle(),
-        supabase
-          .from('legal_acceptances')
-          .select('terms_version, privacy_version, source, accepted_at')
-          .eq('user_id', user.id)
-          .order('accepted_at', { ascending: true }),
-        supabase
-          .from('tracked_purchases')
-          .select(
-            'id, retailer_name, product_name, product_url, purchase_price_pence, current_price_pence, current_in_stock, last_checked_at, last_check_error, currency, purchase_date, return_deadline, size, colour, status, created_at, updated_at',
-          )
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('price_checks')
-          .select(
-            'id, purchase_id, price_pence, currency, in_stock, checked_at, error_message',
-          )
-          .eq('user_id', user.id)
-          .order('checked_at', { ascending: true }),
-        supabase
-          .from('notification_history')
-          .select(
-            'id, purchase_id, notification_type, channel, status, purchase_price_pence, current_price_pence, savings_pence, error_message, sent_at, created_at',
-          )
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('subscriptions')
-          .select(
-            'status, cancel_at_period_end, current_period_start, current_period_end, trial_end, ended_at, created_at, updated_at',
-          )
-          .eq('user_id', user.id)
-          .maybeSingle(),
-      ]);
+    const [
+      profile,
+      legal,
+      purchases,
+      checks,
+      notifications,
+      subscription,
+      betaAccess,
+    ] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, email, full_name, created_at, updated_at')
+        .eq('id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('legal_acceptances')
+        .select('terms_version, privacy_version, source, accepted_at')
+        .eq('user_id', user.id)
+        .order('accepted_at', { ascending: true }),
+      supabase
+        .from('tracked_purchases')
+        .select(
+          'id, retailer_name, product_name, product_url, purchase_price_pence, current_price_pence, current_in_stock, last_checked_at, last_check_error, currency, purchase_date, return_deadline, size, colour, status, created_at, updated_at',
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('price_checks')
+        .select(
+          'id, purchase_id, price_pence, currency, in_stock, checked_at, error_message',
+        )
+        .eq('user_id', user.id)
+        .order('checked_at', { ascending: true }),
+      supabase
+        .from('notification_history')
+        .select(
+          'id, purchase_id, notification_type, channel, status, purchase_price_pence, current_price_pence, savings_pence, error_message, sent_at, created_at',
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('subscriptions')
+        .select(
+          'status, cancel_at_period_end, current_period_start, current_period_end, trial_end, ended_at, created_at, updated_at',
+        )
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('beta_access_grants')
+        .select('starts_at, expires_at, revoked_at, created_at, updated_at')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ]);
 
     throwForError(profile.error, 'Profile export failed');
     if (legal.error && !missingOptionalRelation(legal.error)) {
@@ -78,6 +90,9 @@ export async function GET() {
     throwForError(checks.error, 'Price-check export failed');
     throwForError(notifications.error, 'Notification export failed');
     throwForError(subscription.error, 'Subscription export failed');
+    if (betaAccess.error && !missingOptionalRelation(betaAccess.error)) {
+      throwForError(betaAccess.error, 'Private beta access export failed');
+    }
 
     const now = new Date();
     const payload = buildAccountExport({
@@ -94,6 +109,7 @@ export async function GET() {
       priceChecks: checks.data ?? [],
       notifications: notifications.data ?? [],
       subscription: subscription.data,
+      betaAccess: betaAccess.error ? null : betaAccess.data,
     });
     const filename = `chicmagnolia-data-${now.toISOString().slice(0, 10)}.json`;
 
