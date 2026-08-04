@@ -101,11 +101,7 @@ export function AuthForm({
 
           <form action={action} className="mt-6 space-y-4">
             {isSignUp ? (
-              <input
-                name="betaInviteToken"
-                type="hidden"
-                value={inviteToken}
-              />
+              <input name="betaInviteToken" type="hidden" value={inviteToken} />
             ) : null}
             {isSignUp ? (
               <label className="block text-sm font-medium">

@@ -28,9 +28,7 @@ function subscription(
   };
 }
 
-function betaAccess(
-  overrides: Partial<BetaAccessGrant> = {},
-): BetaAccessGrant {
+function betaAccess(overrides: Partial<BetaAccessGrant> = {}): BetaAccessGrant {
   return {
     user_id: '00000000-0000-4000-8000-000000000001',
     invite_id: '00000000-0000-4000-8000-000000000002',
@@ -57,9 +55,9 @@ describe('monitoring entitlement', () => {
   });
 
   it('prefers private beta access when both sources are active', () => {
-    expect(
-      monitoringAccessSource(subscription(), betaAccess(), now),
-    ).toBe('private_beta');
+    expect(monitoringAccessSource(subscription(), betaAccess(), now)).toBe(
+      'private_beta',
+    );
   });
 
   it('denies access when both sources are inactive', () => {

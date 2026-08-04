@@ -128,7 +128,8 @@ export async function signUp(formData: FormData) {
   const createdUser = data.user;
   if (
     !createdUser ||
-    (Array.isArray(createdUser.identities) && createdUser.identities.length === 0)
+    (Array.isArray(createdUser.identities) &&
+      createdUser.identities.length === 0)
   ) {
     redirect(
       signUpRedirectTarget(

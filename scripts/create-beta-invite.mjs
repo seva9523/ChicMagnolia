@@ -11,14 +11,19 @@ const email = String(process.argv[2] ?? '')
   .trim()
   .toLowerCase();
 const expiresInDays = Number(process.argv[3] ?? 14);
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.chicmagnolia.com';
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.chicmagnolia.com';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
   fail('Pass the invited email address as the first argument.');
 }
-if (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 90) {
+if (
+  !Number.isInteger(expiresInDays) ||
+  expiresInDays < 1 ||
+  expiresInDays > 90
+) {
   fail('Invitation expiry must be a whole number from 1 to 90 days.');
 }
 if (!supabaseUrl || !serviceRoleKey) {
@@ -50,4 +55,6 @@ inviteUrl.searchParams.set('invite', token);
 console.log(`Private beta invitation created for ${email}.`);
 console.log(`Invitation expires at ${expiresAt}.`);
 console.log(`Invite link: ${inviteUrl.toString()}`);
-console.log('The plaintext token is shown only in this output. Share it privately.');
+console.log(
+  'The plaintext token is shown only in this output. Share it privately.',
+);

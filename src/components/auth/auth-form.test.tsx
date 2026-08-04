@@ -39,7 +39,9 @@ describe('AuthForm', () => {
       'autocomplete',
       'new-password',
     );
-    expect(screen.getByText(/No payment is required during the beta/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No payment is required during the beta/i),
+    ).toBeInTheDocument();
     expect(
       container.querySelector('input[name="betaInviteToken"]'),
     ).toHaveValue('a-valid-private-beta-token-1234567890');

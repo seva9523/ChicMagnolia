@@ -166,7 +166,9 @@ export default async function DashboardPage({
             </Button>
           ) : (
             <Button asChild>
-              <Link href="/dashboard/billing">Private beta access required</Link>
+              <Link href="/dashboard/billing">
+                Private beta access required
+              </Link>
             </Button>
           )}
         </div>
