@@ -43,6 +43,15 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Print canonical retailer readiness formatting
+        run: |
+          echo '=== catalog.ts ==='
+          npx prettier src/retailers/catalog.ts
+          echo '=== selection.ts ==='
+          npx prettier src/retailers/selection.ts
+          echo '=== catalog.test.ts ==='
+          npx prettier src/retailers/catalog.test.ts
+
       - name: Verify formatting
         run: npm run format:check
 
