@@ -6,6 +6,7 @@ type AccountIdentity = {
 };
 
 type SubscriptionInput = Record<string, unknown> | null;
+type BetaAccessInput = Record<string, unknown> | null;
 
 export type AccountExportInput = {
   exportedAt: string;
@@ -16,6 +17,7 @@ export type AccountExportInput = {
   priceChecks: unknown[];
   notifications: unknown[];
   subscription: SubscriptionInput;
+  betaAccess: BetaAccessInput;
 };
 
 function publicSubscription(subscription: SubscriptionInput) {
@@ -33,9 +35,21 @@ function publicSubscription(subscription: SubscriptionInput) {
   };
 }
 
+function publicBetaAccess(betaAccess: BetaAccessInput) {
+  if (!betaAccess) return null;
+
+  return {
+    starts_at: betaAccess.starts_at ?? null,
+    expires_at: betaAccess.expires_at ?? null,
+    revoked_at: betaAccess.revoked_at ?? null,
+    created_at: betaAccess.created_at ?? null,
+    updated_at: betaAccess.updated_at ?? null,
+  };
+}
+
 export function buildAccountExport(input: AccountExportInput) {
   return {
-    format_version: 1,
+    format_version: 2,
     exported_at: input.exportedAt,
     account: {
       id: input.account.id,
@@ -49,5 +63,6 @@ export function buildAccountExport(input: AccountExportInput) {
     price_checks: input.priceChecks,
     notification_history: input.notifications,
     subscription: publicSubscription(input.subscription),
+    private_beta_access: publicBetaAccess(input.betaAccess),
   };
 }

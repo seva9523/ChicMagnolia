@@ -3,10 +3,10 @@ import { redirect } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { betaAccessStatusLabel } from '@/services/beta-access';
+import { getUserMonitoringEntitlement } from '@/services/monitoring-access';
 import {
   canStartCheckout,
-  getUserSubscription,
-  hasMonitoringAccess,
   subscriptionStatusLabel,
 } from '@/services/subscription-access';
 
@@ -31,20 +31,28 @@ export default async function BillingPage({
   if (!user) redirect('/login');
 
   const params = await searchParams;
-  let subscription = null;
+  let access = null;
   let loadError: string | null = null;
 
   try {
-    subscription = await getUserSubscription(supabase, user.id);
+    access = await getUserMonitoringEntitlement(supabase, user.id);
   } catch {
     loadError =
-      'We could not load your billing status. Please refresh the page.';
+      'We could not load your access status. Please refresh the page.';
   }
 
-  const monitoringAccess = hasMonitoringAccess(subscription);
-  const status = subscriptionStatusLabel(subscription);
+  const subscription = access?.subscription ?? null;
+  const betaAccess = access?.betaAccess ?? null;
+  const privateBetaActive = access?.source === 'private_beta';
+  const monitoringAccess = access?.hasAccess ?? false;
+  const status = privateBetaActive
+    ? betaAccessStatusLabel(betaAccess)
+    : subscriptionStatusLabel(subscription);
   const periodEnd = subscription?.current_period_end
     ? date.format(new Date(subscription.current_period_end))
+    : null;
+  const betaEnd = betaAccess?.expires_at
+    ? date.format(new Date(betaAccess.expires_at))
     : null;
 
   const checkoutMessage =
@@ -74,10 +82,10 @@ export default async function BillingPage({
 
         <div className="bg-card mt-6 rounded-3xl border p-6 shadow-sm sm:p-10">
           <p className="text-primary text-sm font-semibold">
-            Chic Magnolia billing
+            Chic Magnolia access
           </p>
           <h1 className="mt-2 text-3xl font-semibold">
-            One simple monthly plan
+            Private beta and billing
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl">
             Track up to 10 active purchases, receive one variant-aware price
@@ -103,19 +111,41 @@ export default async function BillingPage({
 
           <div className="mt-8 grid gap-5 md:grid-cols-[1.2fr_0.8fr]">
             <section className="rounded-2xl border p-6">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-semibold">£4.99</span>
-                <span className="text-muted-foreground">per month</span>
-              </div>
-              <p className="text-muted-foreground mt-3 text-sm">
-                Monthly GBP subscription. No annual plan, coupon or additional
-                tier is included in the MVP.
-              </p>
+              {privateBetaActive ? (
+                <>
+                  <p className="text-sm font-semibold text-green-800">
+                    Invite accepted
+                  </p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-4xl font-semibold">Free</span>
+                    <span className="text-muted-foreground">
+                      during the private beta
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm">
+                    No payment or test card is required. Your personal
+                    invitation unlocks purchase creation, manual checks and
+                    scheduled daily monitoring.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-semibold">£4.99</span>
+                    <span className="text-muted-foreground">per month</span>
+                  </div>
+                  <p className="text-muted-foreground mt-3 text-sm">
+                    Stripe remains in test mode during the private beta. New
+                    testers should use a personal invitation rather than a test
+                    payment.
+                  </p>
+                </>
+              )}
 
               <div className="mt-6 flex flex-wrap gap-3">
-                {canStartCheckout(subscription) ? (
+                {!privateBetaActive && canStartCheckout(subscription) ? (
                   <form action={startSubscriptionCheckout}>
-                    <Button type="submit">Subscribe with Stripe</Button>
+                    <Button type="submit">Open Stripe test checkout</Button>
                   </form>
                 ) : null}
                 {subscription?.stripe_customer_id ? (
@@ -129,22 +159,26 @@ export default async function BillingPage({
             </section>
 
             <section className="rounded-2xl border p-6">
-              <p className="text-muted-foreground text-sm">
-                Subscription status
-              </p>
+              <p className="text-muted-foreground text-sm">Access status</p>
               <p className="mt-2 text-2xl font-semibold">{status}</p>
               <p className="text-muted-foreground mt-3 text-sm">
                 {monitoringAccess
                   ? 'Purchase creation, manual checks and daily monitoring are enabled.'
                   : 'Your existing purchase history remains visible, but new monitoring is disabled.'}
               </p>
-              {periodEnd ? (
+              {privateBetaActive && betaEnd ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  Private-beta access ends {betaEnd}.
+                </p>
+              ) : null}
+              {!privateBetaActive && periodEnd ? (
                 <p className="text-muted-foreground mt-3 text-sm">
                   Current paid period ends {periodEnd}.
                 </p>
               ) : null}
-              {subscription?.status === 'past_due' ||
-              subscription?.status === 'unpaid' ? (
+              {!privateBetaActive &&
+              (subscription?.status === 'past_due' ||
+                subscription?.status === 'unpaid') ? (
                 <p className="mt-3 text-sm text-red-700">
                   Open Manage billing to update the payment method. Monitoring
                   resumes after Stripe confirms an active subscription through
@@ -155,10 +189,12 @@ export default async function BillingPage({
           </div>
 
           <p className="text-muted-foreground mt-8 text-sm">
-            Payments, invoices, payment-method updates and cancellation are
-            handled on Stripe-hosted pages. Returning from Stripe does not
-            itself grant access; signed webhook state is the source of truth.
-            The recurring plan and cancellation rules are explained in the{' '}
+            Private-beta access and Stripe subscription access are recorded
+            separately. Payments, invoices, payment-method updates and
+            cancellation are handled on Stripe-hosted pages. Returning from
+            Stripe does not itself grant access; signed webhook state is the
+            source of truth. The recurring plan and cancellation rules are
+            explained in the{' '}
             <Link className="text-primary font-medium underline" href="/terms">
               Terms of service
             </Link>

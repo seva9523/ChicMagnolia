@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "beta:invite": "node scripts/create-beta-invite.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "1.3.3",

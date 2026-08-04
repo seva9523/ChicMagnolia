@@ -19,7 +19,7 @@ export default function Home() {
         <section className="bg-card w-full max-w-2xl rounded-3xl border p-8 shadow-sm sm:p-12">
           <div className="bg-secondary text-secondary-foreground mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
             <CheckCircle2 aria-hidden="true" className="size-4" />
-            Private beta
+            Invite-only private beta
           </div>
 
           <p className="text-primary mb-3 text-sm font-semibold tracking-[0.2em] uppercase">
@@ -32,10 +32,14 @@ export default function Home() {
             Chic Magnolia helps UK shoppers monitor eligible purchases and act
             when the same saved colour and size becomes cheaper.
           </p>
+          <p className="text-muted-foreground mt-4 max-w-xl text-sm leading-6">
+            Private-beta access is free and available through a personal,
+            single-use invitation link. No payment is required during the beta.
+          </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/sign-up">Create account</Link>
+              <Link href="/sign-up">Use an invitation</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/login">Sign in</Link>

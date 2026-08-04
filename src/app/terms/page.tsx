@@ -34,12 +34,20 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>2. Eligibility and account security</h2>
+        <h2>2. Eligibility, invitations and account security</h2>
         <p>
           You must be at least 18 and legally able to enter into a contract. You
           must provide accurate account information, protect your password and
           promptly tell us about suspected unauthorised use. You may not share
           an account in a way that defeats plan limits or security controls.
+        </p>
+        <p>
+          During the invite-only private beta, each invitation is personal,
+          single-use and intended for the email address selected by the
+          operator. You must not sell, publish or transfer an invitation. An
+          invitation may expire before it is used, and beta access may be
+          revoked where reasonably necessary to protect the service, enforce
+          these terms or manage the limited cohort.
         </p>
       </section>
 
@@ -85,8 +93,9 @@ export default function TermsPage() {
       <section>
         <h2>5. Beta availability</h2>
         <p>
-          The service is under active development. Retailer integrations may
-          fail when a website changes or blocks automated access. We may repair,
+          The current invite-only private beta is provided without charge. The
+          service is under active development. Retailer integrations may fail
+          when a website changes or blocks automated access. We may repair,
           replace, pause or remove a retailer adapter and may impose reasonable
           limits needed to protect reliability or provider budgets. We will use
           reasonable care but do not promise uninterrupted, error-free or
@@ -97,14 +106,15 @@ export default function TermsPage() {
       <section>
         <h2>6. Subscription and billing</h2>
         <p>
-          While payments remain in Stripe test mode, no real charge is taken.
-          When live billing is enabled, Chic Magnolia is intended to offer one
-          recurring monthly plan at the price shown before Checkout. Stripe
-          hosts Checkout, invoices, payment-method management and the Customer
-          Portal.
+          Private-beta invitation access is recorded separately from a Stripe
+          subscription and does not require payment. While payments remain in
+          Stripe test mode, no real charge is taken. When live billing is
+          enabled, Chic Magnolia is intended to offer one recurring monthly plan
+          at the price shown before Checkout. Stripe hosts Checkout, invoices,
+          payment-method management and the Customer Portal.
         </p>
         <ul>
-          <li>The plan renews monthly until cancelled.</li>
+          <li>The paid plan renews monthly until cancelled.</li>
           <li>
             Cancellation through the Customer Portal normally takes effect at
             the end of the current paid period, and monitoring access remains
@@ -197,8 +207,10 @@ export default function TermsPage() {
         <p>
           You may stop tracking products, cancel billing through Stripe or
           delete the account from Settings. Account deletion is designed to
-          remove user-owned application data and immediately stop linked Stripe
-          billing. Some billing, fraud-prevention, security, support or legal
+          remove user-owned application data, including the linked beta-access
+          grant, and immediately stop linked Stripe billing. Redeemed invitation
+          records may retain a non-personal redemption timestamp to prevent
+          reuse. Some billing, fraud-prevention, security, support or legal
           records may remain where retention is required or justified. See the
           Privacy notice for details.
         </p>

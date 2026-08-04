@@ -4,7 +4,11 @@ import { AuthForm } from '@/components/auth/auth-form';
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    message?: string;
+    invite?: string;
+  }>;
 }) {
   const params = await searchParams;
   return (
@@ -13,6 +17,7 @@ export default async function SignUpPage({
       mode="sign-up"
       error={params.error}
       message={params.message}
+      inviteToken={params.invite?.trim()}
     />
   );
 }

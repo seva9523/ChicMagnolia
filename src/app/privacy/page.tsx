@@ -12,7 +12,7 @@ import {
 export const metadata: Metadata = {
   title: 'Privacy notice | Chic Magnolia',
   description:
-    'How Chic Magnolia uses and protects personal data during the private beta.',
+    'How Chic Magnolia uses and protects invitation, account and purchase data during the private beta.',
 };
 
 export default function PrivacyPage() {
@@ -40,6 +40,13 @@ export default function PrivacyPage() {
       <section>
         <h2>2. Data we collect</h2>
         <ul>
+          <li>
+            <strong>Invitation and beta-access data:</strong> the invited email
+            address until the invitation is redeemed, a one-way hash of the
+            invitation token, invitation expiry and redemption timestamps, and
+            access start, expiry or revocation status. Chic Magnolia does not
+            store the plaintext invitation token.
+          </li>
           <li>
             <strong>Account data:</strong> email address, name, account
             identifiers, authentication status and account dates.
@@ -80,10 +87,12 @@ export default function PrivacyPage() {
       <section>
         <h2>3. Where the data comes from</h2>
         <p>
-          Most data is provided directly by you when you create an account, add
-          a purchase, manage billing or submit the support form. Current price
-          and stock information comes from public retailer pages for the product
-          URL you provide. Subscription status comes from Stripe after signed
+          Invitation details are created by the private-beta operator and are
+          matched to the email address entered during sign-up. Most other data
+          is provided directly by you when you create an account, add a
+          purchase, manage billing or submit the support form. Current price and
+          stock information comes from public retailer pages for the product URL
+          you provide. Subscription status comes from Stripe after signed
           webhook verification.
         </p>
       </section>
@@ -93,16 +102,17 @@ export default function PrivacyPage() {
         <ul>
           <li>
             <strong>To provide the service and perform our contract:</strong>{' '}
-            authenticate you, store purchases, run price and stock checks, send
-            requested alerts, provide data export, respond to support requests
-            and manage the subscription.
+            verify and redeem private-beta invitations, authenticate you, store
+            purchases, run price and stock checks, send requested alerts,
+            provide data export, respond to support requests and manage the
+            subscription.
           </li>
           <li>
-            <strong>For legitimate interests:</strong> protect accounts, prevent
-            abuse, diagnose failures, maintain reliability, keep an accountable
-            support record and understand aggregated product use. These
-            activities are limited to what is reasonably necessary for operating
-            the service.
+            <strong>For legitimate interests:</strong> keep the beta cohort
+            limited, prevent invitation reuse and abuse, protect accounts,
+            diagnose failures, maintain reliability, keep an accountable support
+            record and understand aggregated product use. These activities are
+            limited to what is reasonably necessary for operating the service.
           </li>
           <li>
             <strong>To meet legal obligations:</strong> retain or disclose
@@ -122,8 +132,8 @@ export default function PrivacyPage() {
         <p>Chic Magnolia uses specialist providers to operate the service:</p>
         <ul>
           <li>
-            Supabase for authentication, the application database and support
-            records.
+            Supabase for authentication, invitation and access records, the
+            application database and support records.
           </li>
           <li>
             Vercel for application hosting and privacy-focused web analytics.
@@ -179,9 +189,15 @@ export default function PrivacyPage() {
         <h2>8. How long we keep data</h2>
         <ul>
           <li>
-            Account, purchase, monitoring and notification data is generally
-            kept while the account exists and is deleted when the account is
-            deleted.
+            The invited email address is removed from the invitation record when
+            the invitation is successfully redeemed. Unused or expired
+            invitation records are retained only as reasonably needed to manage
+            the limited beta and prevent abuse, then removed or anonymised.
+          </li>
+          <li>
+            Account, beta-access, purchase, monitoring and notification data is
+            generally kept while the account exists and is deleted when the
+            account is deleted.
           </li>
           <li>
             Support, privacy-rights and security-report records are kept for as
@@ -215,7 +231,8 @@ export default function PrivacyPage() {
           to receive portable data. The Settings page provides a JSON download
           and self-service account deletion. You can also submit a request
           through the support form if the self-service tools do not meet your
-          request.
+          request, including a request about an invitation sent to your email
+          address.
         </p>
         <p>
           You may complain to the UK Information Commissioner&apos;s Office.
@@ -236,25 +253,27 @@ export default function PrivacyPage() {
         <p>
           Deleting an account removes the Supabase authentication user and
           cascades deletion through the user-owned Chic Magnolia profile,
-          purchases, price checks, notifications and subscription-state record.
-          If a Stripe customer is linked, Chic Magnolia first requests deletion
-          of that Stripe customer, which immediately ends active Stripe
-          subscriptions and removes saved payment details from future use.
-          Historical records may remain where Stripe or Chic Magnolia must
-          retain them for legal, accounting, fraud-prevention, support or
-          dispute purposes.
+          beta-access grant, purchases, price checks, notifications and
+          subscription-state record. The redeemed invitation keeps only its
+          non-personal redemption state and loses the user link. If a Stripe
+          customer is linked, Chic Magnolia first requests deletion of that
+          Stripe customer, which immediately ends active Stripe subscriptions
+          and removes saved payment details from future use. Historical records
+          may remain where Stripe or Chic Magnolia must retain them for legal,
+          accounting, fraud-prevention, support or dispute purposes.
         </p>
       </section>
 
       <section>
         <h2>11. Security</h2>
         <p>
-          Chic Magnolia uses authenticated access, database row-level security,
+          Chic Magnolia uses one-way invitation-token hashing, single-use
+          redemption, authenticated access, database row-level security,
           server-only credentials, signed Stripe webhooks, encrypted HTTPS
           transport and restricted security headers. No internet service can
           guarantee absolute security, so please use a unique password and
           submit a security report through the support form if you believe an
-          account has been compromised.
+          account or invitation has been compromised.
         </p>
       </section>
 

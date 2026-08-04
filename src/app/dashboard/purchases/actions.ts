@@ -6,14 +6,11 @@ import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { validateRetailerSelection } from '@/retailers/selection';
+import { getUserMonitoringEntitlement } from '@/services/monitoring-access';
 import {
   performPriceCheck,
   type TrackedPurchaseForCheck,
 } from '@/services/price-monitoring';
-import {
-  getUserSubscription,
-  hasMonitoringAccess,
-} from '@/services/subscription-access';
 
 const MAX_ACTIVE_PURCHASES = 10;
 
@@ -39,22 +36,22 @@ function field(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
 }
 
-async function requirePaidMonitoringAccess(
+async function requireMonitoringAccess(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
 ) {
-  let subscription;
+  let access;
   try {
-    subscription = await getUserSubscription(supabase, userId);
+    access = await getUserMonitoringEntitlement(supabase, userId);
   } catch {
     redirect(
-      '/dashboard/billing?message=We could not confirm your subscription access.',
+      '/dashboard/billing?message=We could not confirm your monitoring access.',
     );
   }
 
-  if (!hasMonitoringAccess(subscription)) {
+  if (!access.hasAccess) {
     redirect(
-      '/dashboard/billing?message=An active Chic Magnolia subscription is required for monitoring.',
+      '/dashboard/billing?message=An active private beta invitation or subscription is required for monitoring.',
     );
   }
 }
@@ -108,7 +105,7 @@ export async function createPurchase(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
-  await requirePaidMonitoringAccess(supabase, user.id);
+  await requireMonitoringAccess(supabase, user.id);
 
   let count = 0;
   try {
@@ -177,7 +174,7 @@ export async function updatePurchaseStatus(formData: FormData) {
     redirect('/dashboard?message=Purchase could not be found.');
 
   if (status === 'tracking' && existing.status !== 'tracking') {
-    await requirePaidMonitoringAccess(supabase, user.id);
+    await requireMonitoringAccess(supabase, user.id);
 
     let count = 0;
     try {
@@ -215,7 +212,7 @@ export async function checkCurrentPrice(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  await requirePaidMonitoringAccess(supabase, user.id);
+  await requireMonitoringAccess(supabase, user.id);
 
   const { data: purchase, error: purchaseError } = await supabase
     .from('tracked_purchases')

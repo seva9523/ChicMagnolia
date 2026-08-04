@@ -4,11 +4,17 @@ import { describe, expect, it } from 'vitest';
 import PrivacyPage from './page';
 
 describe('Privacy notice', () => {
-  it('explains export, deletion, processors, support records and user rights', () => {
+  it('explains invitations, export, deletion, processors, support records and user rights', () => {
     render(<PrivacyPage />);
 
     expect(
       screen.getByRole('heading', { name: 'Privacy notice' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Invitation and beta-access data:/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not store the plaintext invitation token/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {

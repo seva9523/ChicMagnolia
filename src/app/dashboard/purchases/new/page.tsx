@@ -5,10 +5,7 @@ import { SupportedRetailers } from '@/components/supported-retailers';
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SUPPORTED_RETAILER_NAMES } from '@/retailers/catalog';
-import {
-  getUserSubscription,
-  hasMonitoringAccess,
-} from '@/services/subscription-access';
+import { getUserMonitoringEntitlement } from '@/services/monitoring-access';
 
 import { createPurchase } from '../actions';
 
@@ -27,17 +24,17 @@ export default async function NewPurchasePage({
 
   if (!user) redirect('/login');
 
-  let subscription;
+  let access;
   try {
-    subscription = await getUserSubscription(supabase, user.id);
+    access = await getUserMonitoringEntitlement(supabase, user.id);
   } catch {
     redirect(
-      '/dashboard/billing?message=We could not confirm your subscription access.',
+      '/dashboard/billing?message=We could not confirm your monitoring access.',
     );
   }
-  if (!hasMonitoringAccess(subscription)) {
+  if (!access.hasAccess) {
     redirect(
-      '/dashboard/billing?message=Subscribe to Chic Magnolia before adding a monitored purchase.',
+      '/dashboard/billing?message=Use an active private beta invitation or subscription before adding a monitored purchase.',
     );
   }
 

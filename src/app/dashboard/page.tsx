@@ -8,11 +8,9 @@ import {
 } from '@/app/dashboard/purchases/actions';
 import { Button } from '@/components/ui/button';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import {
-  getUserSubscription,
-  hasMonitoringAccess,
-  subscriptionStatusLabel,
-} from '@/services/subscription-access';
+import { betaAccessStatusLabel } from '@/services/beta-access';
+import { getUserMonitoringEntitlement } from '@/services/monitoring-access';
+import { subscriptionStatusLabel } from '@/services/subscription-access';
 
 type Purchase = {
   id: string;
@@ -60,18 +58,18 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [{ data: purchases, error }, subscriptionResult] = await Promise.all([
+  const [{ data: purchases, error }, accessResult] = await Promise.all([
     supabase
       .from('tracked_purchases')
       .select(
         'id, retailer_name, product_name, product_url, purchase_price_pence, current_price_pence, current_in_stock, last_checked_at, last_check_error, currency, purchase_date, return_deadline, size, colour, status',
       )
       .order('created_at', { ascending: false }),
-    getUserSubscription(supabase, user.id)
-      .then((subscription) => ({ subscription, error: null as string | null }))
+    getUserMonitoringEntitlement(supabase, user.id)
+      .then((access) => ({ access, error: null as string | null }))
       .catch(() => ({
-        subscription: null,
-        error: 'Billing status could not be loaded.',
+        access: null,
+        error: 'Monitoring access could not be loaded.',
       })),
   ]);
 
@@ -95,9 +93,20 @@ export default async function DashboardPage({
       Math.max(0, purchase.purchase_price_pence - purchase.current_price_pence)
     );
   }, 0);
-  const subscription = subscriptionResult.subscription;
-  const monitoringAccess = hasMonitoringAccess(subscription);
-  const billingStatus = subscriptionStatusLabel(subscription);
+  const access = accessResult.access;
+  const subscription = access?.subscription ?? null;
+  const betaAccess = access?.betaAccess ?? null;
+  const monitoringAccess = access?.hasAccess ?? false;
+  const accessStatus =
+    access?.source === 'private_beta'
+      ? betaAccessStatusLabel(betaAccess)
+      : subscriptionStatusLabel(subscription);
+  const accessDescription =
+    access?.source === 'private_beta'
+      ? 'Free private-beta access is active. Daily monitoring and manual price checks are enabled.'
+      : monitoringAccess
+        ? 'Daily monitoring and manual price checks are enabled.'
+        : 'Existing data remains readable. A valid private beta invitation or active subscription is required for monitoring.';
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-10">
@@ -110,7 +119,7 @@ export default async function DashboardPage({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline">
-            <Link href="/dashboard/billing">Billing</Link>
+            <Link href="/dashboard/billing">Access</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/settings">Settings</Link>
@@ -134,9 +143,9 @@ export default async function DashboardPage({
             We could not load your purchases. Please try again.
           </p>
         ) : null}
-        {subscriptionResult.error ? (
+        {accessResult.error ? (
           <p className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {subscriptionResult.error}
+            {accessResult.error}
           </p>
         ) : null}
 
@@ -157,24 +166,24 @@ export default async function DashboardPage({
             </Button>
           ) : (
             <Button asChild>
-              <Link href="/dashboard/billing">Subscribe for £4.99/month</Link>
+              <Link href="/dashboard/billing">
+                Private beta access required
+              </Link>
             </Button>
           )}
         </div>
 
         <div className="bg-card mt-8 flex flex-col justify-between gap-4 rounded-2xl border p-5 shadow-sm sm:flex-row sm:items-center">
           <div>
-            <p className="text-muted-foreground text-sm">Subscription</p>
-            <p className="mt-1 text-lg font-semibold">{billingStatus}</p>
+            <p className="text-muted-foreground text-sm">Access</p>
+            <p className="mt-1 text-lg font-semibold">{accessStatus}</p>
             <p className="text-muted-foreground mt-1 text-sm">
-              {monitoringAccess
-                ? 'Daily monitoring and manual price checks are enabled.'
-                : 'Existing data remains readable. Subscribe or resolve billing to restart monitoring.'}
+              {accessDescription}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
-              <Link href="/dashboard/billing">View billing</Link>
+              <Link href="/dashboard/billing">Access details</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/dashboard/settings">Account and privacy</Link>
@@ -204,7 +213,7 @@ export default async function DashboardPage({
             <p className="text-muted-foreground mx-auto mt-2 max-w-lg">
               {monitoringAccess
                 ? 'Add a purchase to save its price, product details and return deadline.'
-                : 'Subscribe first, then add up to 10 active purchases for daily monitoring.'}
+                : 'Open the personal invitation link sent to you to activate free private-beta monitoring.'}
             </p>
             <Button className="mt-6" asChild>
               <Link
@@ -216,7 +225,7 @@ export default async function DashboardPage({
               >
                 {monitoringAccess
                   ? 'Add your first purchase'
-                  : 'View the monthly plan'}
+                  : 'View access details'}
               </Link>
             </Button>
           </div>
@@ -340,7 +349,7 @@ export default async function DashboardPage({
                       ) : (
                         <Button asChild>
                           <Link href="/dashboard/billing">
-                            Subscribe to resume checks
+                            Restore monitoring access
                           </Link>
                         </Button>
                       )}

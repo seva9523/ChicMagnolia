@@ -10,6 +10,10 @@ function migration(name: string) {
   );
 }
 
+function createPolicyStatements(sql: string) {
+  return sql.match(/create policy[\s\S]*?;/gi) ?? [];
+}
+
 describe('database privacy controls', () => {
   it('cascades user deletion through every user-owned table', () => {
     const files = [
@@ -19,6 +23,7 @@ describe('database privacy controls', () => {
       '202607290001_create_notification_history.sql',
       '202607290002_create_stripe_subscriptions.sql',
       '202607310001_create_legal_acceptances.sql',
+      '202608040001_create_private_beta_access.sql',
     ];
 
     for (const file of files) {
@@ -36,6 +41,7 @@ describe('database privacy controls', () => {
       migration('202607290001_create_notification_history.sql'),
       migration('202607290002_create_stripe_subscriptions.sql'),
       migration('202607310001_create_legal_acceptances.sql'),
+      migration('202608040001_create_private_beta_access.sql'),
     ].join('\n');
 
     for (const table of [
@@ -45,6 +51,7 @@ describe('database privacy controls', () => {
       'notification_history',
       'subscriptions',
       'legal_acceptances',
+      'beta_access_grants',
     ]) {
       expect(combined).toMatch(
         new RegExp(
@@ -68,6 +75,47 @@ describe('database privacy controls', () => {
     );
     expect(sql).not.toMatch(
       /create policy[^;]+legal_acceptances[\s\S]+?for delete/i,
+    );
+  });
+
+  it('keeps private beta invitation tokens hashed and server-controlled', () => {
+    const sql = migration('202608040001_create_private_beta_access.sql');
+    const indexSql = migration(
+      '202608040002_index_beta_invite_redemptions.sql',
+    );
+    const policies = createPolicyStatements(sql);
+    const invitePolicies = policies.filter((policy) =>
+      /on public\.beta_invites/i.test(policy),
+    );
+    const grantPolicies = policies.filter((policy) =>
+      /on public\.beta_access_grants/i.test(policy),
+    );
+
+    expect(sql).toMatch(/token_hash text not null unique/i);
+    expect(sql).toMatch(/token_hash ~ '\^\[0-9a-f\]\{64\}\$'/i);
+    expect(sql).toMatch(
+      /alter table public\.beta_invites enable row level security/i,
+    );
+    expect(invitePolicies).toEqual([]);
+    expect(sql).toMatch(
+      /alter table public\.beta_access_grants enable row level security/i,
+    );
+    expect(grantPolicies).toHaveLength(1);
+    expect(grantPolicies[0]).toMatch(/for select/i);
+    expect(grantPolicies[0]).not.toMatch(/for (insert|update|delete)/i);
+    expect(sql).toMatch(
+      /create or replace function public\.redeem_beta_invite/i,
+    );
+    expect(sql).toMatch(/security definer/i);
+    expect(sql).toMatch(
+      /revoke all on function public\.redeem_beta_invite[\s\S]+from public, anon, authenticated/i,
+    );
+    expect(sql).toMatch(
+      /grant execute on function public\.redeem_beta_invite[\s\S]+to service_role/i,
+    );
+    expect(sql).toMatch(/invited_email = null/i);
+    expect(indexSql).toMatch(
+      /create index if not exists beta_invites_redeemed_by_idx[\s\S]+on public\.beta_invites\(redeemed_by\)/i,
     );
   });
 
