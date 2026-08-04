@@ -1,6 +1,8 @@
 export const EMAIL_SENDER_NAME = 'Chic Magnolia';
 
-export function brandedEmailFrom(value: string | undefined): string | undefined {
+export function brandedEmailFrom(
+  value: string | undefined,
+): string | undefined {
   if (!value) return undefined;
 
   const trimmed = value.trim();
