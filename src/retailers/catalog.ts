@@ -8,8 +8,7 @@ export const SUPPORTED_RETAILER_NAMES = [
   'COS',
 ] as const;
 
-export type SupportedRetailerName =
-  (typeof SUPPORTED_RETAILER_NAMES)[number];
+export type SupportedRetailerName = (typeof SUPPORTED_RETAILER_NAMES)[number];
 
 export const SUPPORTED_RETAILER_SLUG_BY_NAME = {
   Zara: 'zara-uk',
