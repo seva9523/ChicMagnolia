@@ -80,6 +80,9 @@ describe('database privacy controls', () => {
 
   it('keeps private beta invitation tokens hashed and server-controlled', () => {
     const sql = migration('202608040001_create_private_beta_access.sql');
+    const indexSql = migration(
+      '202608040002_index_beta_invite_redemptions.sql',
+    );
     const policies = createPolicyStatements(sql);
     const invitePolicies = policies.filter((policy) =>
       /on public\.beta_invites/i.test(policy),
@@ -111,6 +114,9 @@ describe('database privacy controls', () => {
       /grant execute on function public\.redeem_beta_invite[\s\S]+to service_role/i,
     );
     expect(sql).toMatch(/invited_email = null/i);
+    expect(indexSql).toMatch(
+      /create index if not exists beta_invites_redeemed_by_idx[\s\S]+on public\.beta_invites\(redeemed_by\)/i,
+    );
   });
 
   it('keeps support requests private while preserving unresolved cases after user deletion', () => {
