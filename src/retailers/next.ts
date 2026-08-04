@@ -180,7 +180,8 @@ function selectedNextColourMatches(html: string, colour: string): boolean {
   );
   if (explicitColour.test(text)) return true;
 
-  const heading = productHeading(html) ?? metaContent(html, 'og:title') ?? '';
+  const heading =
+    productHeading(html) ?? metaContent(html, 'og:title') ?? '';
   return new RegExp(
     `(?:^|[^a-z0-9])${escapedColour}(?=$|[^a-z0-9])`,
     'i',
