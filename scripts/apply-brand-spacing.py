@@ -7,8 +7,17 @@ ROOT = Path(__file__).resolve().parents[1]
 UNSPACED_BRAND = re.compile(
     r"(?<![A-Za-z0-9_./-])ChicMagnolia(?![A-Za-z0-9_./-])"
 )
+INLINE_CODE = re.compile(r"(`+[^`]*`+)")
 TEXT_EXTENSIONS = {".ts", ".tsx", ".md", ".mdx", ".html", ".txt"}
 IGNORED_PARTS = {".git", ".next", "node_modules", "coverage"}
+
+
+def replace_outside_inline_code(line: str) -> str:
+    parts = INLINE_CODE.split(line)
+    return "".join(
+        part if part.startswith("`") else UNSPACED_BRAND.sub("Chic Magnolia", part)
+        for part in parts
+    )
 
 
 def replace_markdown(content: str) -> str:
@@ -30,7 +39,7 @@ def replace_markdown(content: str) -> str:
             output.append(line)
             continue
 
-        output.append(line if in_fence else UNSPACED_BRAND.sub("Chic Magnolia", line))
+        output.append(line if in_fence else replace_outside_inline_code(line))
 
     return "".join(output)
 
